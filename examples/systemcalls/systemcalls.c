@@ -1,5 +1,6 @@
 #include "systemcalls.h"
 
+
 /**
  * @param cmd the command to execute with system()
  * @return true if the commands in ... with arguments @param arguments were executed 
@@ -17,6 +18,12 @@ bool do_system(const char *cmd)
  *   or false() if it returned a failure
 */
 
+int res;
+	res= system(cmd); 
+	
+	if(res == -1)
+	return false;
+	
     return true;
 }
 
@@ -58,7 +65,78 @@ bool do_exec(int count, ...)
  *   as second argument to the execv() command.
  *   
 */
+	
+	pid_t pid, pid1;
+	int status;
+	
+	 	  
+	
+	pid=fork();
+	
+	if(pid == -1)
+	{
+		perror("fork");
+		return false;	
+	}
+	
+	
+	int ret;	
+	if(!pid)
+	{
+		
+		ret = execv(command[0], command);
+		if(ret == -1) 
+		{
+			perror("exec");
+			exit(EXIT_FAILURE);
+		}
+		
+		
+	}
+	
+	
+	
+	pid1 = waitpid(-1, &status, WUNTRACED | WCONTINUED );
+	
+	if(pid1 == -1)
+	{
+		perror("waitpid");
+		return false;
+		exit(EXIT_FAILURE);
+		
+	}
+		
+		
+		
+	if(WIFEXITED (status))
+	{
+	
+	printf("Normal termination with exit status = %d\n", WEXITSTATUS(status));
+	if(WEXITSTATUS(status) == 1)
+	return false;
+	else 
+	return true;
+	}
+	
+	if(WIFSIGNALED (status))
+	{
+	printf("Killed by signal = %d%s\n", WTERMSIG(status), WCOREDUMP(status)? "(dumped core)": "");
+	return false;
+	}
+	
+	if(WIFSTOPPED (status))
+	{
+	printf("Stopped by signal = %d\n", WSTOPSIG(status));
+	return false;
+	}
+	
+	if(WIFCONTINUED (status))
+	
+	printf("Continued\n");
 
+	
+	
+	
     va_end(args);
 
     return true;
@@ -92,6 +170,83 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
  *   The rest of the behaviour is same as do_exec()
  *   
 */
+
+	int kidpid;
+	
+	int fd = open(outputfile, O_WRONLY|O_TRUNC|O_CREAT, 0644);
+	if (fd < 0) 
+	{ 
+		perror("open"); 
+		abort(); 
+	}
+	
+	
+	int ret;
+	switch (kidpid = fork()) 
+	{
+  		case -1: perror("fork"); 
+  			 abort();
+  		case 0:
+   			 if (dup2(fd, 1) < 0) 
+   			 {
+   			 	 perror("dup2"); 
+   			  	 abort(); 
+   			 }
+    			 close(fd);
+   			 ret=execv(command[0], command);
+   			 if(ret == -1)
+   			 {
+   			 	perror("execv"); 
+   			 	exit(EXIT_FAILURE);
+   			 }
+   			 
+  		default:
+   			 close(fd);
+   			    
+	}
+	
+	int status;
+	pid_t pid1;
+	
+	pid1 = waitpid(0, &status, WUNTRACED | WCONTINUED );
+	
+	if(pid1 == -1)
+	{
+		perror("waitpid");
+		return false;
+		exit(EXIT_FAILURE);
+		
+	}
+		
+	printf("wait pid= %d\n", pid1);
+		
+		
+	if(WIFEXITED (status))
+	{
+	
+	printf("Normal termination with exit status = %d\n", WEXITSTATUS(status));
+	if(WEXITSTATUS(status) == 1)
+	return false;
+	else 
+	return true;
+	}
+	
+	if(WIFSIGNALED (status))
+	{
+	printf("Killed by signal = %d%s\n", WTERMSIG(status), WCOREDUMP(status)? "(dumped core)": "");
+	return false;
+	}
+	
+	if(WIFSTOPPED (status))
+	{
+	printf("Stopped by signal = %d\n", WSTOPSIG(status));
+	return false;
+	}
+	
+	if(WIFCONTINUED (status))
+	
+	printf("Continued\n");
+
 
     va_end(args);
     
