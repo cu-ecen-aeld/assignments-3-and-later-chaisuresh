@@ -8,7 +8,7 @@ set -u
 NUMFILES=10
 WRITESTR=AELD_IS_FUN
 WRITEDIR=/tmp/aeld-data
-username=aesd-private-repo
+username=$(cat conf/username.txt)
 
 if [ $# -lt 2 ]
 then
