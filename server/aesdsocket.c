@@ -44,12 +44,15 @@ void sig_handler(int signum)
   	 free(buf);
   	 free(buf2);
   	 
+  	 remove("/var/tmp/aesdsocketdata.txt");
+  	 
   	if(close(fd) == -1) 
   	{
   		syslog(LOG_ERR,"close file unsuccessful\n");
   		
   	}
   	
+  	closelog();
   	
   	exit(1);
   	
@@ -118,10 +121,11 @@ int main(int argc, char *argv[])
   	 
   	 freeaddrinfo(res);
   	 
-  	 if(strcmp(argv[0], daem) == 0)
+  	 if(strcmp(argv[1], daem) == 0)
   	 {
   	 
   	 	 pid_t pid;
+  	 	 
 
     		/* Fork off the parent process */
    		 pid = fork();
@@ -177,102 +181,107 @@ int main(int argc, char *argv[])
   	 	//exit(1);
   	 }
   	
-  	syslog(LOG_USER, "stuck here 5");
+  	
   	size1= sizeof(sockaddr1);
-  	 
-  	  fd= open("/var/tmp/aesdsocketdata.txt", O_CREAT | O_RDWR | O_APPEND, 0644);
-  	   if(fd == -1)
-  	  	perror("File create and open unsuccessful\n");
-  	 
+  
+	 
+   int total=0; 
+ 	 
   while(signal_bool==0)
  	{
  	
   	 
-  	 syslog(LOG_USER, "in whie");
+  	 	
   	 
   	 
-  	 buf = (char *)malloc(sizeof(char) * 200);
+  	 buf = (char *)malloc(sizeof(char) * 8192);
   	 
   	 
-  	 int len=1, len2, len3;
-  	 
-  	  int nr,nr1;  
-  	
-
-
-  	
+  	 int len=1, len2, len3;  	 
+  	 int nr,nr1;   	
   	  	
   	  	
-  	  	ret4= accept(ret, &sockaddr1, &size1 );
+  	 ret4= accept(ret, &sockaddr1, &size1 );
   	 if(ret4 == -1)
   	 {
   	 	perror("socket accept failed");
   	 	return false;
-  	 	//exit(1);
+  	 	
   	 }
   	 else syslog(LOG_USER, "Accepted connection from ");
   	 
   	 
-  	 syslog(LOG_USER, "stuck here 6");
+  	    fd= open("/var/tmp/aesdsocketdata.txt", O_CREAT | O_RDWR | O_APPEND , 0644);
+  	 if(fd == -1)
+  	 {
+  	  	perror("File create and open unsuccessful\n");
+  	  	return false;
+  	 }
+  	 
   	 
   	
-  		 len= recv(ret4, buf, strlen(buf), MSG_DONTWAIT | MSG_ERRQUEUE);
+  		do
+  		{
+  		 len= recv(ret4, buf, strlen(buf)-1, 0);
   	 	 if(len == -1)
   	 	{
   	 		perror("receive failed");
   	 		return false;
-  	 		//exit(1);
+  	 		
   	 	} 
+  	 	 else 
+  	 	{
+  	 	total+=(len);
   	 	
-  	
-  	 	
-  	 	len2=1;
-  	 	len3=0;
-  	 	
-  		while(len2!=0)
-  		{
-  	  		for(int i=len3; i<len; i++)
-  	  		{
-  	  			if(buf[i] == '\n')
-  	  			{
-  	  				len2=len-i;
-  	  				len3=i;
-  	  			}
-  	  			else len2=0;
-  	  		
-  	  		}
-  	  	
-  			nr=write(fd, buf, len3);
+  	 	nr=write(fd, buf, len);
 			if(nr == -1) 
 			{
 				perror("File write unsuccessful\n");
 				return false;
 			}
-			
+  	 	}
+  	 	}while(strchr(buf, '\n') == NULL);		
 		
+		buf[total]='\0';
 		
-		}			
-			
+		syslog(LOG_USER, " received buf = %s", buf);
 	
-	
+	lseek(fd, 0, SEEK_SET);
   	 
-  	 buf2 = (char *)malloc(sizeof(char) * 200);	
+  	 buf2 = (char *)malloc(sizeof(char) * 8192);	
   	 
-  	 len3= read(fd, buf2, 200);
-  	  if(len3 == -1)
+  	 int sent=0;
+  	 while(sent< total)
   	 {
-  	  	perror("Read unsuccessful\n");
-  	  	return false;  	  	
-  	  }
+  	 
+  	 	lseek(fd, sent, SEEK_SET);
+  	 	
+  	 	int read_len;
+  	 	if((total-sent)<400) read_len=total-sent;
+  	 	else read_len=400;
+  	 	
+  	 	len3= read(fd, buf2, read_len);
+  	  	if(len3 == -1)
+  	 	{
+  	  		perror("Read unsuccessful\n");
+  	  		return false;  	  	
+  	  	}
+  	  	
+  	  	
+  	  	sent+=len3;	
+  	  
+  	  
 	
   	
-  	ret5= send(ret4, buf2, strlen(buf2), MSG_DONTWAIT | MSG_ERRQUEUE);
+  	ret5= send(ret4, buf2, len3, 0);
   	 if(ret5 == -1)
   	 {
   	  	perror("Send unsuccessful\n");
   	  	return false;  	  	
   	  }
+  	  }
   	
+  	syslog(LOG_USER, " read buf = %s", buf2);
   	
   	ret5 = close(ret4);
   	if(ret5 == -1)
@@ -283,6 +292,7 @@ int main(int argc, char *argv[])
   	
   	 free(buf);
   	 free(buf2);
+  	
   	 
   	 	if(close(fd) == -1) 
   	{
@@ -293,9 +303,6 @@ int main(int argc, char *argv[])
   	closelog();
   	
   	} 
-  	 
-  closelog();
-   
-	
-
+ 
+   remove("/var/tmp/aesdsocketdata.txt");
 }
