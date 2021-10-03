@@ -96,6 +96,7 @@ int main(int argc, char *argv[])
   	 if(setsockopt(ret, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &addr2, sizeof(int)) == -1)
   	 {
   	 	perror("socket reuse addr failed");
+  	 	close(ret4);
   	 	return -1;
   	 	
   	 } 
@@ -105,6 +106,7 @@ int main(int argc, char *argv[])
   	 if(ret2 != 0)
   	 {
   	 	perror("getaddrinfo failed");
+  	 	close(ret4);
   	 	return false;
   	 }
                        
@@ -115,8 +117,9 @@ int main(int argc, char *argv[])
   	if(ret2 == -1)
   	 {
   	 	perror("socket bind failed");
+  	 	close(ret4);
   	 	return false;
-  	 	//exit(1);
+  	 	
   	 }
   	 
   	 freeaddrinfo(res);
@@ -125,37 +128,35 @@ int main(int argc, char *argv[])
   	 {
   	 
   	 	 pid_t pid;
-  	 	 
+  	 	 pid = fork();
 
-    		/* Fork off the parent process */
-   		 pid = fork();
-
-    		/* An error occurred */
+    		
     		if (pid < 0)
         	exit(EXIT_FAILURE);
 	
-    		/* Success: Let the parent terminate */
+    		
     		if (pid > 0)
       		  exit(EXIT_SUCCESS);
 
-    		/* On success: The child process becomes session leader */
+    		
     		if(pid==0)
     		{
     		if (setsid() < 0)
+    		{
+    		close(ret4);
        	 exit(EXIT_FAILURE);
+       	 }
 
-    		/* Catch, ignore and handle signals */
-    		//TODO: Implement a working signal handler */
+    		
     		signal(SIGCHLD, SIG_IGN);
     		signal(SIGHUP, SIG_IGN);
 
     		  
 
-    		/* Change the working directory to the root directory */
-    		/* or another appropriated directory */
    		 if(chdir("/")==-1)
    		 {
    		 	perror("chdir unsuccesful");
+   		 	close(ret4);
    		 	exit(EXIT_FAILURE);
    		 	}
    		 	
@@ -177,6 +178,7 @@ int main(int argc, char *argv[])
   	  if(ret3 == -1)
   	 {
   	 	perror("socket listen failed");
+  	 	close(ret4);
   	 	return false;
   	 	//exit(1);
   	 }
@@ -205,7 +207,10 @@ int main(int argc, char *argv[])
   	 if(ret4 == -1)
   	 {
   	 	perror("socket accept failed");
+  	 	close(ret4);
+  	 	free(buf); 
   	 	return false;
+  	 	
   	 	
   	 }
   	 else syslog(LOG_USER, "Accepted connection from ");
@@ -215,6 +220,9 @@ int main(int argc, char *argv[])
   	 if(fd == -1)
   	 {
   	  	perror("File create and open unsuccessful\n");
+  	  	close(ret4);
+  	 	free(buf);  		 	
+  		close(fd);
   	  	return false;
   	 }
   	 
@@ -226,6 +234,9 @@ int main(int argc, char *argv[])
   	 	 if(len == -1)
   	 	{
   	 		perror("receive failed");
+  	 		close(ret4);
+  	 		free(buf);  		 	
+  			close(fd);
   	 		return false;
   	 		
   	 	} 
@@ -237,6 +248,9 @@ int main(int argc, char *argv[])
 			if(nr == -1) 
 			{
 				perror("File write unsuccessful\n");
+				close(ret4);
+  	 			free(buf);  		 	
+  				close(fd);
 				return false;
 			}
   	 	}
@@ -264,6 +278,10 @@ int main(int argc, char *argv[])
   	  	if(len3 == -1)
   	 	{
   	  		perror("Read unsuccessful\n");
+  	  		close(ret4);
+  	 		free(buf);
+  		 	free(buf2);
+  			close(fd);
   	  		return false;  	  	
   	  	}
   	  	
@@ -277,6 +295,10 @@ int main(int argc, char *argv[])
   	 if(ret5 == -1)
   	 {
   	  	perror("Send unsuccessful\n");
+  	  	close(ret4);
+  	 	free(buf);
+  		 free(buf2);
+  		close(fd);
   	  	return false;  	  	
   	  }
   	  }
@@ -290,8 +312,11 @@ int main(int argc, char *argv[])
   	  	return(false);  	  	
   	  }
   	
+  	
   	 free(buf);
   	 free(buf2);
+  	
+  	
   	
   	 
   	 	if(close(fd) == -1) 
