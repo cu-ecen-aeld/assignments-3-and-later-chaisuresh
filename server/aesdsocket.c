@@ -26,8 +26,9 @@
 
 
 int ret4=0, fd;
-char *rec_buf, *read_buf,*tmp_buf;
+char *rec_buf, *read_buf,*tmp_buf, *tmp_buf2;
 int signal_bool=0;
+char *ip;
 
 void sig_handler(int signum)
 {
@@ -43,7 +44,7 @@ void sig_handler(int signum)
   	 {
   	  	perror("close socket unsuccessful\n");
   	  	  	  	
-  	  }
+  	  } else syslog(LOG_USER, "Closed connection from %s",ip);
   	
   	 free(rec_buf);
   	 free(read_buf);
@@ -75,6 +76,7 @@ int main(int argc, char *argv[])
 	struct addrinfo hints;
 	struct addrinfo *res;
 	struct stat st;
+	int buf_size=200;
 	
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = AF_INET ;
@@ -192,7 +194,7 @@ int main(int argc, char *argv[])
   
 	 
    int total=0; 
-   char *ip;
+   
  	 
   while(signal_bool==0)
  	{
@@ -201,7 +203,7 @@ int main(int argc, char *argv[])
   	 	
   	 
   	 
-  	 rec_buf = (char *)malloc(sizeof(char) * 200);
+  	 rec_buf = (char *)malloc(sizeof(char) * buf_size);
   	 
   	 
   	 int len=1, len2, len3;  	 
@@ -276,7 +278,7 @@ int main(int argc, char *argv[])
 	
 	lseek(fd, 0, SEEK_SET);
   	 
-  	 read_buf = (char *)malloc(sizeof(char) * 200);	
+  	 read_buf = (char *)malloc(sizeof(char) * buf_size);	
   	 
   	 int sent=0;
   	 while(sent< total)
@@ -285,8 +287,8 @@ int main(int argc, char *argv[])
   	 	lseek(fd, sent, SEEK_SET);
   	 	
   	 	int read_len;
-  	 	if((total-sent)<200) read_len=total-sent;
-  	 	else read_len=200;
+  	 	if((total-sent)<buf_size) read_len=total-sent;
+  	 	else read_len=buf_size;
   	 	
   	 	len3= read(fd, read_buf, read_len);
   	  	if(len3 == -1)
@@ -320,15 +322,16 @@ int main(int argc, char *argv[])
   	  }
   	  }
   	
-  	syslog(LOG_USER, " read rec_buf = %s", read_buf);
+  	//syslog(LOG_USER, " read rec_buf = %s", read_buf);
   	
   	ret5 = close(ret4);
   	if(ret5 == -1)
   	 {
   	  	perror("close socket unsuccessful\n");
-  	  	syslog(LOG_USER, "Closed connection from %s",ip);
+  	  	
   	  	return(false);  	  	
-  	  }
+  	  }else
+  	  syslog(LOG_USER, "Closed connection from %s",ip);
   	
   	
   	 free(rec_buf);
