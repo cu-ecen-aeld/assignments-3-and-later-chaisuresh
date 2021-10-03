@@ -1,4 +1,8 @@
 // Author- Chaithra Suresh
+//
+// References- https://stackoverflow.com/questions/238603/how-can-i-get-a-files-size-in-c
+//	https://github.com/pasce/daemon-skeleton-linux-c/blob/master/daemonize.c
+//
 
 
 #include <unistd.h>
@@ -22,7 +26,7 @@
 
 
 int ret4=0, fd;
-char *buf, *buf2;
+char *rec_buf, *read_buf,*tmp_buf;
 int signal_bool=0;
 
 void sig_handler(int signum)
@@ -41,8 +45,8 @@ void sig_handler(int signum)
   	  	  	  	
   	  }
   	
-  	 free(buf);
-  	 free(buf2);
+  	 free(rec_buf);
+  	 free(read_buf);
   	 
   	 remove("/var/tmp/aesdsocketdata.txt");
   	 
@@ -70,7 +74,7 @@ int main(int argc, char *argv[])
 	socklen_t size1;
 	struct addrinfo hints;
 	struct addrinfo *res;
-	
+	struct stat st;
 	
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = AF_INET ;
@@ -188,6 +192,7 @@ int main(int argc, char *argv[])
   
 	 
    int total=0; 
+   char *ip;
  	 
   while(signal_bool==0)
  	{
@@ -196,7 +201,7 @@ int main(int argc, char *argv[])
   	 	
   	 
   	 
-  	 buf = (char *)malloc(sizeof(char) * 400);
+  	 rec_buf = (char *)malloc(sizeof(char) * 200);
   	 
   	 
   	 int len=1, len2, len3;  	 
@@ -208,12 +213,18 @@ int main(int argc, char *argv[])
   	 {
   	 	perror("socket accept failed");
   	 	close(ret4);
-  	 	free(buf); 
+  	 	free(rec_buf); 
   	 	return false;
   	 	
   	 	
   	 }
-  	 else syslog(LOG_USER, "Accepted connection from ");
+  	 else 
+  	 {
+  	 	struct sockaddr_in *addr_in = (struct sockaddr_in *)&sockaddr1;
+  	 	ip = inet_ntoa(addr_in->sin_addr);
+  	 	syslog(LOG_USER, "Accepted connection from %s",ip);
+  	 	
+  	 }
   	 
   	 
   	    fd= open("/var/tmp/aesdsocketdata.txt", O_CREAT | O_RDWR | O_APPEND , 0644);
@@ -221,7 +232,7 @@ int main(int argc, char *argv[])
   	 {
   	  	perror("File create and open unsuccessful\n");
   	  	close(ret4);
-  	 	free(buf);  		 	
+  	 	free(rec_buf);  		 	
   		close(fd);
   	  	return false;
   	 }
@@ -230,12 +241,12 @@ int main(int argc, char *argv[])
   	
   		do
   		{
-  		 len= recv(ret4, buf, strlen(buf)-1, 0);
+  		 len= recv(ret4, rec_buf, strlen(rec_buf)-1, 0);
   	 	 if(len == -1)
   	 	{
   	 		perror("receive failed");
   	 		close(ret4);
-  	 		free(buf);  		 	
+  	 		free(rec_buf);  		 	
   			close(fd);
   	 		return false;
   	 		
@@ -244,25 +255,28 @@ int main(int argc, char *argv[])
   	 	{
   	 	total+=(len);
   	 	
-  	 	nr=write(fd, buf, len);
+  	 	nr=write(fd, rec_buf, len);
 			if(nr == -1) 
 			{
 				perror("File write unsuccessful\n");
 				close(ret4);
-  	 			free(buf);  		 	
+  	 			free(rec_buf);  		 	
   				close(fd);
 				return false;
 			}
   	 	}
-  	 	}while(strchr(buf, '\n') == NULL);		
+  	 	}while(strchr(rec_buf, '\n') == NULL);	
+  	 	
+  	 	
+  	 		
 		
-		buf[total]='\0';
+		rec_buf[total]='\0';
 		
-		syslog(LOG_USER, " received buf = %s", buf);
+		//syslog(LOG_USER, " received rec_buf = %s", rec_buf);
 	
 	lseek(fd, 0, SEEK_SET);
   	 
-  	 buf2 = (char *)malloc(sizeof(char) * 400);	
+  	 read_buf = (char *)malloc(sizeof(char) * 200);	
   	 
   	 int sent=0;
   	 while(sent< total)
@@ -271,50 +285,54 @@ int main(int argc, char *argv[])
   	 	lseek(fd, sent, SEEK_SET);
   	 	
   	 	int read_len;
-  	 	if((total-sent)<400) read_len=total-sent;
-  	 	else read_len=400;
+  	 	if((total-sent)<200) read_len=total-sent;
+  	 	else read_len=200;
   	 	
-  	 	len3= read(fd, buf2, read_len);
+  	 	len3= read(fd, read_buf, read_len);
   	  	if(len3 == -1)
   	 	{
   	  		perror("Read unsuccessful\n");
   	  		close(ret4);
-  	 		free(buf);
-  		 	free(buf2);
+  	 		free(rec_buf);
+  		 	free(read_buf);
   			close(fd);
   	  		return false;  	  	
   	  	}
   	  	
   	  	
   	  	sent+=len3;	
-  	  
-  	  
-	
+  	  	
+  	  	stat("/var/tmp/aesdsocketdata.txt", &st);
+  	  	
+  	  	tmp_buf= realloc(read_buf, sizeof(char)*st.st_size);
+  	  	
+		read_buf=tmp_buf;
   	
-  	ret5= send(ret4, buf2, len3, 0);
+  	ret5= send(ret4, read_buf, len3, 0);
   	 if(ret5 == -1)
   	 {
   	  	perror("Send unsuccessful\n");
   	  	close(ret4);
-  	 	free(buf);
-  		 free(buf2);
+  	 	free(rec_buf);
+  		 free(read_buf);
   		close(fd);
   	  	return false;  	  	
   	  }
   	  }
   	
-  	syslog(LOG_USER, " read buf = %s", buf2);
+  	syslog(LOG_USER, " read rec_buf = %s", read_buf);
   	
   	ret5 = close(ret4);
   	if(ret5 == -1)
   	 {
   	  	perror("close socket unsuccessful\n");
+  	  	syslog(LOG_USER, "Closed connection from %s",ip);
   	  	return(false);  	  	
   	  }
   	
   	
-  	 free(buf);
-  	 free(buf2);
+  	 free(rec_buf);
+  	 free(read_buf);
   	
   	
   	
