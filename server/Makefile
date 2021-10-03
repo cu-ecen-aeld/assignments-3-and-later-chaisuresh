@@ -1,4 +1,4 @@
-INCLUDE_DIRS = 
+INCLUDE_DIRS = -Wall -Werror
 LIB_DIRS =
 CC=$(CROSS_COMPILE)gcc
 

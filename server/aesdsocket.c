@@ -240,7 +240,7 @@ int main(int argc, char *argv[])
   	 }
   	 
   	 
-  	
+  	//int temp_size=0;
   		do
   		{
   		 len= recv(ret4, rec_buf, strlen(rec_buf)-1, 0);
@@ -256,6 +256,7 @@ int main(int argc, char *argv[])
   	 	 else 
   	 	{
   	 	total+=(len);
+  	 	//temp_size+= (strlen(rec_buf)-1);
   	 	
   	 	nr=write(fd, rec_buf, len);
 			if(nr == -1) 
@@ -266,11 +267,17 @@ int main(int argc, char *argv[])
   				close(fd);
 				return false;
 			}
+  	 	
+  	 	
   	 	}
+  	 	
   	 	}while(strchr(rec_buf, '\n') == NULL);	
   	 	
+  	 	//tmp_buf2=realloc(rec_buf, sizeof(char)*);
+  	 	//rec_buf=tmp_buf2;
   	 	
   	 		
+  	 	
 		
 		rec_buf[total]='\0';
 		
