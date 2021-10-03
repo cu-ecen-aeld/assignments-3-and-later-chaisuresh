@@ -76,7 +76,7 @@ int main(int argc, char *argv[])
 	struct addrinfo hints;
 	struct addrinfo *res;
 	struct stat st;
-	int buf_size=200;
+	int buf_size=1200;
 	
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = AF_INET ;
