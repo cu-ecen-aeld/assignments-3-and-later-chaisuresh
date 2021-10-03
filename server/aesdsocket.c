@@ -196,7 +196,7 @@ int main(int argc, char *argv[])
   	 	
   	 
   	 
-  	 buf = (char *)malloc(sizeof(char) * 8192);
+  	 buf = (char *)malloc(sizeof(char) * 400);
   	 
   	 
   	 int len=1, len2, len3;  	 
@@ -262,7 +262,7 @@ int main(int argc, char *argv[])
 	
 	lseek(fd, 0, SEEK_SET);
   	 
-  	 buf2 = (char *)malloc(sizeof(char) * 8192);	
+  	 buf2 = (char *)malloc(sizeof(char) * 400);	
   	 
   	 int sent=0;
   	 while(sent< total)
