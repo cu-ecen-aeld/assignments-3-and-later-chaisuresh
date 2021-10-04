@@ -68,9 +68,9 @@ void sig_handler(int signum)
 int main(int argc, char *argv[])
 {
 	
-	char daem[5]= "-d";
+	//char daem[]= "-d";
 	
-	openlog("aesdsocket", LOG_PID, LOG_USER);
+	//openlog("aesdsocket", LOG_PID, LOG_USER);
 	struct sockaddr sockaddr1;
 	socklen_t size1;
 	struct addrinfo hints;
@@ -87,7 +87,7 @@ int main(int argc, char *argv[])
 	signal(SIGTERM, sig_handler);
 	 	 
   	 
-  	 int ret2=0, ret3=0, ret5=0;
+  	 int ret3=0, ret5=0;
   	 
   	 int addr2=1;
   	
@@ -109,8 +109,8 @@ int main(int argc, char *argv[])
   	 } 
   	 
   	 
-  	 ret2=getaddrinfo(NULL,"9000",&hints, &res);
-  	 if(ret2 != 0)
+  	 
+  	 if(getaddrinfo(NULL,"9000",&hints, &res) != 0)
   	 {
   	 	perror("getaddrinfo failed");
   	 	close(ret4);
@@ -121,8 +121,8 @@ int main(int argc, char *argv[])
                        
   	 
   	 
-  	ret2= bind(ret,res->ai_addr,res->ai_addrlen);
-  	if(ret2 == -1)
+  	
+  	if(bind(ret,res->ai_addr,res->ai_addrlen) == -1)
   	 {
   	 	perror("socket bind failed");
   	 	close(ret4);
@@ -133,7 +133,8 @@ int main(int argc, char *argv[])
   	 
   	 freeaddrinfo(res);
   	 
-  	 if(strcmp(argv[1], daem) == 0)
+  	 if(argc == 2)
+  	 if(!strcmp( "-d", argv[1]))
   	 {
   	 
   	 	 pid_t pid;
@@ -319,18 +320,6 @@ int main(int argc, char *argv[])
   	 
   	 
   	 read_buf= realloc(read_buf, sizeof(char)*total_buffer);
-  	
-  	 
-  	 /*int sent=0;
-  	 while(sent< total)
-  	 {
-  	 
-  	 	lseek(fd, sent, SEEK_SET);
-  	 	
-  	 	int read_len;
-  	 	if((total-sent)<buf_size) read_len=total-sent;
-  	 	else read_len=buf_size;
-  	 	*/
   	 	
   	 	lseek(fd, 0, SEEK_SET);
   	 
@@ -347,9 +336,6 @@ int main(int argc, char *argv[])
   	  	}
   	  	
   	  	
-  	  	//sent+=len3;	
-  	  	
-  	  	//stat("/var/tmp/aesdsocketdata.txt", &st);
   	  	
   	  	
   	
@@ -364,7 +350,7 @@ int main(int argc, char *argv[])
   		close(fd);
   	  	return false;  	  	
   	  }
-  	  //}
+  	
   	
   	syslog(LOG_USER, " read rec_buf = %s", read_buf);
   	
@@ -375,17 +361,11 @@ int main(int argc, char *argv[])
   	  	
   	  	return(false);  	  	
   	  }else
-  	  syslog(LOG_USER, "Closed connection from %s",ip);
-  	
-  	 	 
-  	
-  	
-  	
+  	  syslog(LOG_USER, "Closed connection from %s",ip); 
   	 
-  	 	
-  	closelog();
+  
   	
   	} 
  
-   remove("/var/tmp/aesdsocketdata.txt");
+   //remove("/var/tmp/aesdsocketdata.txt");
 }
