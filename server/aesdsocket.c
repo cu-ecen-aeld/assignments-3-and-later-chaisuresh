@@ -25,8 +25,8 @@
 #include <ctype.h>
 
 
-int ret4=0, fd;
-char *rec_buf, *read_buf,*tmp_buf, *tmp_buf2;
+int ret4=0, fd=0, ret=0;
+char *rec_buf, *read_buf;
 int signal_bool=0;
 char *ip;
 
@@ -37,7 +37,7 @@ void sig_handler(int signum)
 	syslog(LOG_USER,"Caught signal exiting...");
 	
 	
-	
+	close(ret);
 	if(ret4 != -1)
   	
   	if(close(ret4) == -1)
@@ -75,8 +75,8 @@ int main(int argc, char *argv[])
 	socklen_t size1;
 	struct addrinfo hints;
 	struct addrinfo *res;
-	struct stat st;
-	int buf_size=1200;
+	//struct stat st;
+	int buf_size=500;
 	
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = AF_INET ;
@@ -87,7 +87,7 @@ int main(int argc, char *argv[])
 	signal(SIGTERM, sig_handler);
 	 	 
   	 
-  	 int ret=0, ret2=0, ret3=0, ret5=0;
+  	 int ret2=0, ret3=0, ret5=0;
   	 
   	 int addr2=1;
   	
@@ -103,6 +103,7 @@ int main(int argc, char *argv[])
   	 {
   	 	perror("socket reuse addr failed");
   	 	close(ret4);
+  	 	close(ret);
   	 	return -1;
   	 	
   	 } 
@@ -113,6 +114,7 @@ int main(int argc, char *argv[])
   	 {
   	 	perror("getaddrinfo failed");
   	 	close(ret4);
+  	 	close(ret);
   	 	return false;
   	 }
                        
@@ -124,6 +126,7 @@ int main(int argc, char *argv[])
   	 {
   	 	perror("socket bind failed");
   	 	close(ret4);
+  	 	close(ret);
   	 	return false;
   	 	
   	 }
@@ -150,6 +153,7 @@ int main(int argc, char *argv[])
     		if (setsid() < 0)
     		{
     		close(ret4);
+    		close(ret);
        	 exit(EXIT_FAILURE);
        	 }
 
@@ -180,11 +184,12 @@ int main(int argc, char *argv[])
 	
   	
   	
-  	 ret3= listen(ret, 100);
+  	 ret3= listen(ret, 10);
   	  if(ret3 == -1)
   	 {
   	 	perror("socket listen failed");
   	 	close(ret4);
+  	 	close(ret);
   	 	return false;
   	 	//exit(1);
   	 }
@@ -193,8 +198,31 @@ int main(int argc, char *argv[])
   	size1= sizeof(sockaddr1);
   
 	 
-   int total=0; 
-   
+    int temp_size=buf_size;
+    int total_buffer=0;
+    
+   	rec_buf = (char *)malloc(sizeof(char) * buf_size);
+  	read_buf = (char *)malloc(sizeof(char) * buf_size);
+  	if((rec_buf==NULL)| (read_buf==NULL))	
+  	{
+  		perror("malloc failed for buffers");
+  		close(ret4);
+  	 	close(ret);
+  	 			
+  	
+  	}
+  	 
+     fd= open("/var/tmp/aesdsocketdata.txt", O_CREAT | O_RDWR | O_APPEND , 0644);
+  	 if(fd == -1)
+  	 {
+  	  	perror("File create and open unsuccessful\n");
+  	  	close(ret4);
+  	  	close(ret);
+  	 	free(rec_buf); 
+  	 	free(read_buf); 		 	
+  		close(fd);
+  	  	return false;
+  	 }
  	 
   while(signal_bool==0)
  	{
@@ -203,10 +231,9 @@ int main(int argc, char *argv[])
   	 	
   	 
   	 
-  	 rec_buf = (char *)malloc(sizeof(char) * buf_size);
   	 
   	 
-  	 int len=1, len2, len3;  	 
+  	 int len=0, len2, len3=0;  	 
   	 int nr,nr1;   	
   	  	
   	  	
@@ -215,6 +242,9 @@ int main(int argc, char *argv[])
   	 {
   	 	perror("socket accept failed");
   	 	close(ret4);
+  	 	close(ret);
+  	 	free(read_buf); 
+  	 	close(fd);
   	 	free(rec_buf); 
   	 	return false;
   	 	
@@ -229,65 +259,69 @@ int main(int argc, char *argv[])
   	 }
   	 
   	 
-  	    fd= open("/var/tmp/aesdsocketdata.txt", O_CREAT | O_RDWR | O_APPEND , 0644);
-  	 if(fd == -1)
-  	 {
-  	  	perror("File create and open unsuccessful\n");
-  	  	close(ret4);
-  	 	free(rec_buf);  		 	
-  		close(fd);
-  	  	return false;
-  	 }
+  	  
   	 
   	 
-  	//int temp_size=0;
+  	
+  	int total=0;
+  	
   		do
   		{
-  		 len= recv(ret4, rec_buf, strlen(rec_buf)-1, 0);
+  		
+  		 len= recv(ret4, rec_buf+total, buf_size, 0);
   	 	 if(len == -1)
   	 	{
   	 		perror("receive failed");
   	 		close(ret4);
-  	 		free(rec_buf);  		 	
+  	 		close(ret);
+  	 		free(rec_buf);  
+  	 		free(read_buf); 		 	
   			close(fd);
   	 		return false;
   	 		
   	 	} 
-  	 	 else 
-  	 	{
+  	 	 
   	 	total+=(len);
-  	 	//temp_size+= (strlen(rec_buf)-1);
+  	 	temp_size+= (buf_size);
   	 	
-  	 	nr=write(fd, rec_buf, len);
+  	 	rec_buf=realloc(rec_buf, sizeof(char)*temp_size);
+  	 	
+  	 	
+  	 	
+  	 	}while(strchr(rec_buf, '\n') == NULL);	
+  	 	
+  	 	total_buffer+=total;
+  	 	
+  	 	rec_buf[total]='\0';
+  	 	
+  	 		nr=write(fd, rec_buf, total);
 			if(nr == -1) 
 			{
 				perror("File write unsuccessful\n");
 				close(ret4);
-  	 			free(rec_buf);  		 	
+				close(ret);
+  	 			free(rec_buf); 
+  	 			free(read_buf);  		 	
   				close(fd);
 				return false;
 			}
   	 	
   	 	
-  	 	}
-  	 	
-  	 	}while(strchr(rec_buf, '\n') == NULL);	
-  	 	
-  	 	//tmp_buf2=realloc(rec_buf, sizeof(char)*);
-  	 	//rec_buf=tmp_buf2;
-  	 	
-  	 		
   	 	
 		
-		rec_buf[total]='\0';
 		
-		//syslog(LOG_USER, " received rec_buf = %s", rec_buf);
+		
+		syslog(LOG_USER, " received rec_buf = %s", rec_buf);
 	
-	lseek(fd, 0, SEEK_SET);
+		
+
+	
   	 
-  	 read_buf = (char *)malloc(sizeof(char) * buf_size);	
   	 
-  	 int sent=0;
+  	 read_buf= realloc(read_buf, sizeof(char)*total_buffer);
+  	
+  	 
+  	 /*int sent=0;
   	 while(sent< total)
   	 {
   	 
@@ -296,12 +330,16 @@ int main(int argc, char *argv[])
   	 	int read_len;
   	 	if((total-sent)<buf_size) read_len=total-sent;
   	 	else read_len=buf_size;
+  	 	*/
   	 	
-  	 	len3= read(fd, read_buf, read_len);
+  	 	lseek(fd, 0, SEEK_SET);
+  	 
+  	 	len3= read(fd, read_buf, total_buffer);
   	  	if(len3 == -1)
   	 	{
   	  		perror("Read unsuccessful\n");
   	  		close(ret4);
+  	  		close(ret);
   	 		free(rec_buf);
   		 	free(read_buf);
   			close(fd);
@@ -309,27 +347,26 @@ int main(int argc, char *argv[])
   	  	}
   	  	
   	  	
-  	  	sent+=len3;	
+  	  	//sent+=len3;	
   	  	
-  	  	stat("/var/tmp/aesdsocketdata.txt", &st);
+  	  	//stat("/var/tmp/aesdsocketdata.txt", &st);
   	  	
-  	  	tmp_buf= realloc(read_buf, sizeof(char)*st.st_size);
   	  	
-		read_buf=tmp_buf;
   	
   	ret5= send(ret4, read_buf, len3, 0);
   	 if(ret5 == -1)
   	 {
   	  	perror("Send unsuccessful\n");
   	  	close(ret4);
+  	  	close(ret);
   	 	free(rec_buf);
   		 free(read_buf);
   		close(fd);
   	  	return false;  	  	
   	  }
-  	  }
+  	  //}
   	
-  	//syslog(LOG_USER, " read rec_buf = %s", read_buf);
+  	syslog(LOG_USER, " read rec_buf = %s", read_buf);
   	
   	ret5 = close(ret4);
   	if(ret5 == -1)
@@ -340,19 +377,12 @@ int main(int argc, char *argv[])
   	  }else
   	  syslog(LOG_USER, "Closed connection from %s",ip);
   	
-  	
-  	 free(rec_buf);
-  	 free(read_buf);
+  	 	 
   	
   	
   	
   	 
-  	 	if(close(fd) == -1) 
-  	{
-  		syslog(LOG_ERR,"close file unsuccessful\n");
-  		return false;
-  	}
-  	
+  	 	
   	closelog();
   	
   	} 
