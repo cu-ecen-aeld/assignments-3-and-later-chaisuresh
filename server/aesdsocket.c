@@ -269,7 +269,7 @@ int main(int argc, char *argv[])
                 do
                 {
                 
-                 len= recv(ret4, rec_buf, buf_size, 0);
+                 len= recv(ret4, rec_buf+total, buf_size, 0);
                  if(len == -1)
                 {
                         perror("receive failed");
@@ -285,19 +285,9 @@ int main(int argc, char *argv[])
                 total+=(len);
                 temp_size+= (buf_size);
                 
-               // rec_buf=realloc(rec_buf, sizeof(char)*temp_size); 
+               rec_buf=realloc(rec_buf, sizeof(char)*temp_size); 
                 
-                 nr=write(fd, rec_buf, len);
-                        if(nr == -1) 
-                        {
-                                perror("File write unsuccessful\n");
-                                close(ret4);
-                                close(ret);
-                                free(rec_buf); 
-                                free(read_buf);                         
-                                close(fd);
-                                return false;
-                        }               
+                              
                
                 
                 
@@ -309,7 +299,17 @@ int main(int argc, char *argv[])
                 rec_buf[total]='\0';
                 
                         
-                
+               nr=write(fd, rec_buf, total);
+                        if(nr == -1) 
+                        {
+                                perror("File write unsuccessful\n");
+                                close(ret4);
+                                close(ret);
+                                free(rec_buf); 
+                                free(read_buf);                         
+                                close(fd);
+                                return false;
+                        }   
                 
                 
                 
@@ -322,24 +322,24 @@ int main(int argc, char *argv[])
         
          
          
-         //read_buf= realloc(read_buf, sizeof(char)*total_buffer);
+         read_buf= realloc(read_buf, sizeof(char)*total_buffer);
         
-         lseek(fd, 0, SEEK_SET);
+        // lseek(fd, 0, SEEK_SET);
          
          int sent=0;
-         while(sent< total_buffer)
-         {
+         //while(sent< total_buffer)
+        // {
          
                 //lseek(fd, sent, SEEK_SET);
                 
-                int read_len;
-                if((total_buffer-sent)<buf_size) read_len=total_buffer-sent;
-                else read_len=buf_size;
+                //int read_len;
+               // if((total_buffer-sent)<buf_size) read_len=total_buffer-sent;
+                //else read_len=buf_size;
                 
                 
-                //lseek(fd, 0, SEEK_SET);
+                lseek(fd, 0, SEEK_SET);
          
-                len3= read(fd, read_buf, read_len);
+                len3= read(fd, read_buf, total_buffer);
                 if(len3 == -1)
                 {
                         perror("Read unsuccessful\n");
@@ -387,7 +387,7 @@ int main(int argc, char *argv[])
                 
         //closelog();
         
-        } 
+       // } 
  
    //remove("/var/tmp/aesdsocketdata.txt");
 }
