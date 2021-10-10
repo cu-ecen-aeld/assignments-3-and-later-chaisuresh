@@ -60,6 +60,7 @@ bool start_thread_obtaining_mutex(pthread_t *thread, pthread_mutex_t *mutex,int 
      	perror("pthread create"); 
      	thread_param_main->thread_complete_success = 0;
      	return false;
+     	free(thread_param_main);
      }
      
    /* 
