@@ -70,6 +70,7 @@ void func_close()
                 
                 pthread_mutex_destroy(&mutex);
               
+<<<<<<< HEAD
                 while(!SLIST_EMPTY(&head))
   		{
     			datap = SLIST_FIRST(&head);
@@ -97,6 +98,24 @@ void func_close()
   		}
 		#endif
   
+=======
+                
+               while(!SLIST_EMPTY(&head))
+    		{
+        		datap = SLIST_FIRST(&head);
+        		SLIST_REMOVE_HEAD(&head,entries);
+        		free(datap);
+    		}
+    	
+                SLIST_FOREACH(datap,&head,entries)
+    		{
+        		if (datap->threadmain.thread_complete_success != true)
+			{
+ 		       	pthread_join(datap->threadmain.thread, NULL);
+            			
+       		}
+     		}
+>>>>>>> a0b89f7b558ffdc90d4c9fb0376dfa8101763c98
 	
 	
 	remove("/var/tmp/aesdsocketdata.txt");
@@ -325,13 +344,13 @@ void sig_handler(int signum)
         syslog(LOG_USER,"Caught signal exiting...");
         
         
-        close(ret);
+        //close(ret);
         
         shutdown(ret4, SHUT_RDWR);
          
          remove("/var/tmp/aesdsocketdata.txt");
          
-         func_close();       
+         //func_close();       
      
         
         closelog();
