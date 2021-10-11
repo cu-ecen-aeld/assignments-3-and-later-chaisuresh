@@ -82,7 +82,7 @@ void func_close()
     		{
         		if (datap->threadmain.thread_complete_success != true)
 			{
- 		       	pthread_cancel(datap->threadmain.thread);
+ 		       	pthread_join(datap->threadmain.thread, NULL);
             			
        		}
      		}
@@ -314,13 +314,13 @@ void sig_handler(int signum)
         syslog(LOG_USER,"Caught signal exiting...");
         
         
-        close(ret);
+        //close(ret);
         
         shutdown(ret4, SHUT_RDWR);
          
          remove("/var/tmp/aesdsocketdata.txt");
          
-         func_close();       
+         //func_close();       
      
         
         closelog();
