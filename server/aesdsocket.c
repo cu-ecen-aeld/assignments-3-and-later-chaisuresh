@@ -133,7 +133,7 @@ void thread_to_send(void *threadparam)
                 do
                 {
                 
-                 len= recv(threadlocal->accept_fd, rec_buf+total, buf_size, 0);
+                 len= recv(threadlocal->accept_fd, rec_buf, buf_size, 0);
                  if(len == -1)
                 {
                         perror("receive failed");
@@ -147,7 +147,7 @@ void thread_to_send(void *threadparam)
                 total+=(len);
                 temp_size+= (buf_size);
                 
-              rec_buf=realloc(rec_buf, sizeof(char)*(temp_size)); 
+              rec_buf=realloc(rec_buf, sizeof(char)*(temp_size + 1)); 
                 
                               
                
@@ -158,7 +158,7 @@ void thread_to_send(void *threadparam)
                 
                 total_buffer+=total;
                 
-                rec_buf[total]='\0';
+                //rec_buf[total]='\0';
                 
                 
                 pthread_mutex_lock(&mutex);
@@ -191,9 +191,7 @@ void thread_to_send(void *threadparam)
 		pthread_mutex_unlock(&mutex);
         
          
-          lseek(fd, 0, SEEK_SET);
           
-         read_buf= realloc(read_buf, sizeof(char)*(total_buffer+ timestamp_len));
         
         // lseek(fd, 0, SEEK_SET);
          
@@ -214,6 +212,9 @@ void thread_to_send(void *threadparam)
                perror("block failed");
                }
                 
+                lseek(fd, 0, SEEK_SET);
+          
+         read_buf= (char *)realloc(read_buf, sizeof(char)*(total_buffer+timestamp_len)+1);
                
          
                 len3= read(fd, read_buf, (total_buffer+timestamp_len));
@@ -246,7 +247,7 @@ void thread_to_send(void *threadparam)
           
           
         
-       syslog(LOG_USER, " read rec_buf = %s", read_buf);
+       //syslog(LOG_USER, " read rec_buf = %s", read_buf);
         
         pthread_mutex_unlock(&mutex);
         
@@ -277,7 +278,7 @@ void thread_to_send(void *threadparam)
 void thread_for_timer( union sigval sigval)
 {
 	
-	pthread_mutex_lock(&mutex);
+	
 	
 	char timer_buf[timer_bufsize];
 	
@@ -289,10 +290,10 @@ void thread_for_timer( union sigval sigval)
 	
 	time_stamp= localtime(&time_cur);
 	
-	int time_buf_siz= strftime(timer_buf, timer_bufsize, "timestamp:%a, %d %b %Y %T %z\n",time_stamp) ;
+	int time_buf_siz= strftime(timer_buf, timer_bufsize, "timestamp:%a, %d %b %Y %T %z%n",time_stamp) ;
 	if(time_buf_siz < 0 ) perror(" strftime failed");
 	
-	
+	pthread_mutex_lock(&mutex);
 	timestamp_len = time_buf_siz;
 	
 	if( write(fd, timer_buf, time_buf_siz) == -1)
@@ -488,7 +489,7 @@ int main(int argc, char *argv[])
          
          struct itimerspec itimer;
     	itimer.it_interval.tv_sec = 10;
-    	itimer.it_interval.tv_nsec = 0;
+    	itimer.it_interval.tv_nsec = 1000000;
     	
     	itimer.it_value.tv_sec = starttime.tv_sec + itimer.it_interval.tv_sec;
     	itimer.it_value.tv_nsec = starttime.tv_nsec + itimer.it_interval.tv_nsec;
@@ -558,7 +559,7 @@ int main(int argc, char *argv[])
                 ip = inet_ntoa(addr_in->sin_addr);
                 syslog(LOG_USER, "Accepted connection from %s",ip);
                 
-                
+                	//timestamp_len=0;
                 
                 	datap = (slist_data_t*)malloc(sizeof(slist_data_t));
    			SLIST_INSERT_HEAD(&head,datap,entries);
