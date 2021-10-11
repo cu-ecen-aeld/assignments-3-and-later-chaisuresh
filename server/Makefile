@@ -1,15 +1,12 @@
 INCLUDE_DIRS = 
 LIB_DIRS =
-
-ifeq($(CC),)
+ifeq ($(CC),)
 CC=$(CROSS_COMPILE)gcc
 endif
-
-ifeq($(CFLAGS),)
+ifeq ($(CFLAGS),)
 CFLAGS= -O0 -g -Wall -Werror $(INLCUDE_DIRS) $(CDEFS)
 endif
-
-ifeq($(LDFLAGS),)
+ifeq ($(LDFLAGS),)
 LDFLAGS= -pthread -lrt
 endif
 
