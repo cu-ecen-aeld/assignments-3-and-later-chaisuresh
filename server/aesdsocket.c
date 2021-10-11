@@ -70,22 +70,33 @@ void func_close()
                 
                 pthread_mutex_destroy(&mutex);
               
-                
-               while(!SLIST_EMPTY(&head))
-    		{
-        		datap = SLIST_FIRST(&head);
-        		SLIST_REMOVE_HEAD(&head,entries);
-        		free(datap);
-    		}
-    	
-                SLIST_FOREACH(datap,&head,entries)
-    		{
-        		if (datap->threadmain.thread_complete_success != true)
-			{
- 		       	pthread_cancel(datap->threadmain.thread);
-            			
-       		}
-     		}
+                while(!SLIST_EMPTY(&head))
+  		{
+    			datap = SLIST_FIRST(&head);
+    			SLIST_REMOVE_HEAD(&head,entries);
+    			free(datap);
+  		}
+  		
+		#if 0
+ 		 SLIST_FOREACH(datap,&head,entries)
+  		{
+   		 if (datap->threadmain.thread_complete_success != true)
+   		 {
+      				pthread_cancel(datap->threadmain.thread);
+   		 }
+ 		 }
+		#endif
+
+		#if 1
+  		SLIST_FOREACH(datap,&head,entries)
+		 {
+		    if(datap->threadmain.thread_complete_success == true)
+			    {
+			      pthread_join(datap->threadmain.thread, NULL);
+			    }
+  		}
+		#endif
+  
 	
 	
 	remove("/var/tmp/aesdsocketdata.txt");
@@ -325,7 +336,7 @@ void sig_handler(int signum)
         
         closelog();
         
-        exit(1);
+        exit(0);
         
         
 }
