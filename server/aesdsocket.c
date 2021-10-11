@@ -65,13 +65,11 @@ void func_close()
 
 
 		close(ret4);
-                close(ret);
-                //free(read_buf); 
+                close(ret); 
                 close(fd);
                 
                 pthread_mutex_destroy(&mutex);
-               // free(rec_buf); 
-                //return false;
+              
                 
                while(!SLIST_EMPTY(&head))
     		{
@@ -193,8 +191,9 @@ void thread_to_send(void *threadparam)
 		pthread_mutex_unlock(&mutex);
         
          
-         
-         read_buf= realloc(read_buf, sizeof(char)*(total_buffer+timestamp_len));
+          lseek(fd, 0, SEEK_SET);
+          
+         read_buf= realloc(read_buf, sizeof(char)*(total_buffer+ timestamp_len));
         
         // lseek(fd, 0, SEEK_SET);
          
@@ -215,9 +214,9 @@ void thread_to_send(void *threadparam)
                perror("block failed");
                }
                 
-                lseek(fd, 0, SEEK_SET);
+               
          
-                len3= read(fd, read_buf, total_buffer+timestamp_len);
+                len3= read(fd, read_buf, (total_buffer+timestamp_len));
                 if(len3 == -1)
                 {
                         perror("Read unsuccessful\n");
@@ -235,7 +234,7 @@ void thread_to_send(void *threadparam)
                 
                 
         
-        ret5= send(threadlocal->accept_fd, read_buf, len3+timestamp_len, 0);
+        ret5= send(threadlocal->accept_fd, read_buf, len3, 0);
          if(ret5 == -1)
          {
                 perror("Send unsuccessful\n");
@@ -344,9 +343,11 @@ int main(int argc, char *argv[])
         struct addrinfo *res;
         //struct stat st;
         
+        //int deamon=0;
+        
         //struct thread_data *threadmain;
         
-        
+        SLIST_INIT(&head); 
               
         
         memset(&hints, 0, sizeof(hints));
@@ -405,9 +406,11 @@ int main(int argc, char *argv[])
          freeaddrinfo(res);
          
          if(argc == 2)
-         if(!strcmp( "-d", argv[1]))
          {
-         
+         if (!strcmp( "-d", argv[1]))
+         {
+         	
+         	//deamon=1;
                  pid_t pid;
                  pid = fork();
 
@@ -453,32 +456,12 @@ int main(int argc, char *argv[])
                 close(STDERR_FILENO);
             }
          }
-        
-        
-        
-         ret3= listen(ret, 10);
-          if(ret3 == -1)
-         {
-                perror("socket listen failed");
-               func_close();
-                //exit(1);
-         }
-        
-        
-        size1= sizeof(sockaddr1);
-  
          
-   
-         
-     fd= open("/var/tmp/aesdsocketdata.txt", O_CREAT | O_RDWR | O_APPEND , 0644);
-         if(fd == -1)
-         {
-                perror("File create and open unsuccessful\n");
-               func_close();
          }
          
          
-         
+         //if(deamon==0)
+         //{
          struct sigevent sev;
          
          memset(&sev,0,sizeof(struct sigevent));
@@ -519,12 +502,40 @@ int main(int argc, char *argv[])
     	if(timer_settime(timerid, TIMER_ABSTIME, &itimer, NULL) != 0)
     	{
     		perror("timer settime failed");
-         	func_close();
-    		
+         	func_close();    		
     	}
          
          
-         SLIST_INIT(&head); 
+         
+       // }
+     
+        
+        
+        
+         ret3= listen(ret, 10);
+          if(ret3 == -1)
+         {
+                perror("socket listen failed");
+               func_close();
+                //exit(1);
+         }
+        
+        
+        size1= sizeof(sockaddr1);
+  
+         
+   
+         
+     fd= open("/var/tmp/aesdsocketdata.txt", O_CREAT | O_RDWR | O_APPEND , 0644);
+         if(fd == -1)
+         {
+                perror("File create and open unsuccessful\n");
+               func_close();
+         }
+         
+         
+         
+         
          
   while(signal_bool==0)
         {
