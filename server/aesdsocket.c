@@ -69,6 +69,16 @@ void func_close()
                 close(fd);
                 
                 pthread_mutex_destroy(&mutex);
+                
+             
+  		SLIST_FOREACH(datap,&head,entries)
+		 {
+		    if(datap->threadmain.thread_complete_success == true)
+			    {
+			      pthread_join(datap->threadmain.thread, NULL);
+			    }
+  		}
+		
               
                 while(!SLIST_EMPTY(&head))
   		{
@@ -87,20 +97,12 @@ void func_close()
  		 }
 		#endif
 
-		#if 1
-  		SLIST_FOREACH(datap,&head,entries)
-		 {
-		    if(datap->threadmain.thread_complete_success == true)
-			    {
-			      pthread_join(datap->threadmain.thread, NULL);
-			    }
-  		}
-		#endif
+		
   
 	
 	
 	remove("/var/tmp/aesdsocketdata.txt");
-	timer_delete(timerid);
+	
 
 }
 
@@ -131,7 +133,7 @@ void thread_to_send(void *threadparam)
         if((rec_buf==NULL)| (read_buf==NULL))   
         {
                 perror("malloc failed for buffers");
-               func_close();
+              func_close();
                 free(read_buf);
       		free(rec_buf);
 
@@ -223,12 +225,14 @@ void thread_to_send(void *threadparam)
                perror("block failed");
                }
                 
-                lseek(fd, 0, SEEK_SET);
+                int offset= lseek(fd, 0, SEEK_END);
           
-        	 read_buf= (char *)realloc(read_buf, sizeof(char)*(total_buffer+ timestamp_len)+1);
+        	 read_buf= (char *)realloc(read_buf, sizeof(char)*(offset));
+        	 
+        	 lseek(fd, 0, SEEK_SET);
                
          
-                len3= read(fd, read_buf, (total_buffer+ timestamp_len));
+                len3= read(fd, read_buf, offset);
                 if(len3 == -1)
                 {
                         perror("Read unsuccessful\n");
@@ -325,18 +329,18 @@ void sig_handler(int signum)
         syslog(LOG_USER,"Caught signal exiting...");
         
         
-        close(ret);
+        //close(ret);
         
-        shutdown(ret4, SHUT_RDWR);
+        shutdown(ret, SHUT_RDWR);
          
-         remove("/var/tmp/aesdsocketdata.txt");
+         //remove("/var/tmp/aesdsocketdata.txt");
          
-         func_close();       
+        // func_close();       
      
         
-        closelog();
+        //closelog();
         
-        exit(0);
+       // exit(1);
         
         
 }
@@ -355,7 +359,7 @@ int main(int argc, char *argv[])
         struct addrinfo *res;
         //struct stat st;
         
-        //int deamon=0;
+        int deamon=0;
         
         //struct thread_data *threadmain;
         
@@ -417,18 +421,23 @@ int main(int argc, char *argv[])
          
          freeaddrinfo(res);
          
+          pid_t pid;
+         
          if(argc == 2)
          {
          if (!strcmp( "-d", argv[1]))
          {
          	
-         	//deamon=1;
-                 pid_t pid;
+         	deamon=1;
+                
                  pid = fork();
 
                 
                 if (pid < 0)
-                exit(EXIT_FAILURE);
+                {
+                func_close();
+                return -1;
+                }
         
                 
                 if (pid > 0)
@@ -441,7 +450,9 @@ int main(int argc, char *argv[])
                 {
                	 close(ret4);
                 	close(ret);
-        	 	exit(EXIT_FAILURE);
+                	func_close();
+                	return -1;
+        	 	//exit(EXIT_FAILURE);
        	 }
 
                 
@@ -454,7 +465,9 @@ int main(int argc, char *argv[])
                  {
                         perror("chdir unsuccesful");
                         close(ret4);
-                        exit(EXIT_FAILURE);
+                        func_close();
+                        return -1;
+                        //exit(EXIT_FAILURE);
                         }
                         
                  int fd1;
@@ -472,8 +485,8 @@ int main(int argc, char *argv[])
          }
          
          
-         //if(deamon==0)
-         //{
+       if((deamon==0) || ( pid ==0))      
+          {
          struct sigevent sev;
          
          memset(&sev,0,sizeof(struct sigevent));
@@ -487,14 +500,14 @@ int main(int argc, char *argv[])
          if(timer_create(clockid,&sev,&timerid) != 0)
          {
          	perror("timer create failed");
-         	func_close();
+         	//func_close();
          }
          
          if(clock_gettime(clockid,&starttime) == -1)
          {
          
          	perror("timer gettime failed");
-         	func_close();
+         	//func_close();
          
          }
          
@@ -514,12 +527,12 @@ int main(int argc, char *argv[])
     	if(timer_settime(timerid, TIMER_ABSTIME, &itimer, NULL) != 0)
     	{
     		perror("timer settime failed");
-         	func_close();    		
+         	//func_close();    		
     	}
          
          
          
-       // }
+       }
      
         
         
@@ -605,15 +618,19 @@ int main(int argc, char *argv[])
          
         } 
         
+        printf("above funcclose\n");
         
-        
+         func_close(); 
          
+         timer_delete(timerid);
          
                 
         //closelog();
         
        // } 
  
-   //remove("/var/tmp/aesdsocketdata.txt");
+   remove("/var/tmp/aesdsocketdata.txt");
+   
+   return 0;
 }
 
