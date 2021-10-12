@@ -225,10 +225,10 @@ void thread_to_send(void *threadparam)
                 
                 lseek(fd, 0, SEEK_SET);
           
-         read_buf= (char *)realloc(read_buf, sizeof(char)*(total_buffer+timestamp_len)+1);
+        	 read_buf= (char *)realloc(read_buf, sizeof(char)*(total_buffer+ timestamp_len)+1);
                
          
-                len3= read(fd, read_buf, (total_buffer+timestamp_len));
+                len3= read(fd, read_buf, (total_buffer+ timestamp_len));
                 if(len3 == -1)
                 {
                         perror("Read unsuccessful\n");
@@ -301,7 +301,7 @@ void thread_for_timer( union sigval sigval)
 	
 	time_stamp= localtime(&time_cur);
 	
-	int time_buf_siz= strftime(timer_buf, timer_bufsize, "timestamp:%a, %d %b %Y %T %z%n",time_stamp) ;
+	int time_buf_siz= strftime(timer_buf, timer_bufsize, "timestamp:%Y %b %a %d %H:%M:%S%n",time_stamp) ;
 	if(time_buf_siz < 0 ) perror(" strftime failed");
 	
 	pthread_mutex_lock(&mutex);
