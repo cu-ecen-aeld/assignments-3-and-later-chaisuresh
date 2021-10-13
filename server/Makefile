@@ -1,8 +1,14 @@
-INCLUDE_DIRS =
+INCLUDE_DIRS = 
 LIB_DIRS =
+ifeq ($(CC),)
 CC=$(CROSS_COMPILE)gcc
-
-CFLAGS= -O0 $(INLCUDE_DIRS) $(CDEFS)
+endif
+ifeq ($(CFLAGS),)
+CFLAGS= -O0 -g -Wall -Werror $(INLCUDE_DIRS) $(CDEFS)
+endif
+ifeq ($(LDFLAGS),)
+LDFLAGS= -pthread -lrt
+endif
 
 CFILES= aesdsocket.c
 
@@ -11,12 +17,14 @@ OBJS= ${CFILES:.c=.o}
 
 all: aesdsocket
 
+default: aesdsocket
+
 clean:
 	-rm -f *.o *.d
 	-rm -f perfmon aesdsocket
 
 aesdsocket: aesdsocket.o
-	$(CC) $(LDFLAGS) $(CFLAGS) -o $@ $@.o
+	$(CC) -o $@ $@.o $(LDFLAGS) $(CFLAGS)
 
 .c.o:
 	$(CC) $(CFLAGS) -c $<
