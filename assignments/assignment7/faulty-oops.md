@@ -1,12 +1,12 @@
 Unable to handle kernel NULL pointer dereference at virtual address 0000000000000000<br/>
 Mem abort info:<br/>
-  ESR = 0x96000045<br/>
-  EC = 0x25: DABT (current EL), IL = 32 bits<br/>
-  SET = 0, FnV = 0<br/>
-  EA = 0, S1PTW = 0<br/>
+ &nbsp; ESR = 0x96000045<br/>
+&nbsp;  EC = 0x25: DABT (current EL), IL = 32 bits<br/>
+ &nbsp; SET = 0, FnV = 0<br/>
+ &nbsp; EA = 0, S1PTW = 0<br/>
 Data abort info:<br/>
-  ISV = 0, ISS = 0x00000045<br/>
-  CM = 0, WnR = 1<br/>
+ &nbsp; ISV = 0, ISS = 0x00000045<br/>
+ &nbsp; CM = 0, WnR = 1<br/>
 user pgtable: 4k pages, 39-bit VAs, pgdp=0000000042094000<br/>
 [0000000000000000] pgd=0000000000000000, p4d=0000000000000000, pud=0000000000000000<br/>
 Internal error: Oops: 96000045 [#1] SMP<br/>
