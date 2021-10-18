@@ -43,3 +43,8 @@ Call trace:<br/>
  el0_sync+0x174/0x180<br/>
 Code: d2800001 d2800000 d503233f d50323bf (b900003f) <br/>
 ---[ end trace c80d8945c15ef6e9 ]---<br/>
+
+
+ANALYSIS: 
+When we echo "hello-world" the runqemu.sh goes in faulty. According to the first statement it says its unable to handle kernel NULL pointer dereference at address 0; which means we tried to access a NULL pointer. \
+This is the cause for faulty_write to be called. We can also see that at "faulty_write+0x14/0x20" the faulty write was called and just before this qemu attempted to write at the address - x1 : 0000000000000000 x0 : 0000000000000000. When this error hits, the qemu re-starts.
