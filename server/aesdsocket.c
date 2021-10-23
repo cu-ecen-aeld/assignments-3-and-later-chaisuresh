@@ -305,7 +305,7 @@ void thread_for_timer( union sigval sigval)
 	
 	time_stamp= localtime(&time_cur);
 	
-	int time_buf_siz= strftime(timer_buf, timer_bufsize, "timestamp:%Y %b %a %d %H:%M:%S%n",time_stamp) ;
+	int time_buf_siz= strftime(timer_buf, timer_bufsize, "timestamp:%Y %b %a %H:%M:%S%n",time_stamp) ;
 	if(time_buf_siz < 0 ) perror(" strftime failed");
 	
 	pthread_mutex_lock(&mutex);
