@@ -65,33 +65,44 @@ void func_close()
 
 
 		close(ret4);
-                close(ret);
-                //free(read_buf); 
+                close(ret); 
                 close(fd);
                 
                 pthread_mutex_destroy(&mutex);
-               // free(rec_buf); 
-                //return false;
                 
-               while(!SLIST_EMPTY(&head))
-    		{
-        		datap = SLIST_FIRST(&head);
-        		SLIST_REMOVE_HEAD(&head,entries);
-        		free(datap);
-    		}
-    	
-                SLIST_FOREACH(datap,&head,entries)
-    		{
-        		if (datap->threadmain.thread_complete_success != true)
-			{
- 		       	pthread_cancel(datap->threadmain.thread);
-            			
-       		}
-     		}
+             
+  		SLIST_FOREACH(datap,&head,entries)
+		 {
+		    if(datap->threadmain.thread_complete_success == true)
+			    {
+			      pthread_join(datap->threadmain.thread, NULL);
+			    }
+  		}
+		
+              
+                while(!SLIST_EMPTY(&head))
+  		{
+    			datap = SLIST_FIRST(&head);
+    			SLIST_REMOVE_HEAD(&head,entries);
+    			free(datap);
+  		}
+  		
+		#if 0
+ 		 SLIST_FOREACH(datap,&head,entries)
+  		{
+   		 if (datap->threadmain.thread_complete_success != true)
+   		 {
+      				pthread_cancel(datap->threadmain.thread);
+   		 }
+ 		 }
+		#endif
+
+		
+  
 	
 	
 	remove("/var/tmp/aesdsocketdata.txt");
-	timer_delete(timerid);
+	
 
 }
 
@@ -122,7 +133,7 @@ void thread_to_send(void *threadparam)
         if((rec_buf==NULL)| (read_buf==NULL))   
         {
                 perror("malloc failed for buffers");
-               func_close();
+              func_close();
                 free(read_buf);
       		free(rec_buf);
 
@@ -135,7 +146,7 @@ void thread_to_send(void *threadparam)
                 do
                 {
                 
-                 len= recv(threadlocal->accept_fd, rec_buf+total, buf_size, 0);
+                 len= recv(threadlocal->accept_fd, rec_buf, buf_size, 0);
                  if(len == -1)
                 {
                         perror("receive failed");
@@ -149,7 +160,7 @@ void thread_to_send(void *threadparam)
                 total+=(len);
                 temp_size+= (buf_size);
                 
-              rec_buf=realloc(rec_buf, sizeof(char)*(temp_size)); 
+              rec_buf=realloc(rec_buf, sizeof(char)*(temp_size + 1)); 
                 
                               
                
@@ -160,7 +171,7 @@ void thread_to_send(void *threadparam)
                 
                 total_buffer+=total;
                 
-                rec_buf[total]='\0';
+                //rec_buf[total]='\0';
                 
                 
                 pthread_mutex_lock(&mutex);
@@ -193,8 +204,7 @@ void thread_to_send(void *threadparam)
 		pthread_mutex_unlock(&mutex);
         
          
-         
-         read_buf= realloc(read_buf, sizeof(char)*(total_buffer+timestamp_len));
+          
         
         // lseek(fd, 0, SEEK_SET);
          
@@ -215,9 +225,14 @@ void thread_to_send(void *threadparam)
                perror("block failed");
                }
                 
-                lseek(fd, 0, SEEK_SET);
+                int offset= lseek(fd, 0, SEEK_END);
+          
+        	 read_buf= (char *)realloc(read_buf, sizeof(char)*(offset));
+        	 
+        	 lseek(fd, 0, SEEK_SET);
+               
          
-                len3= read(fd, read_buf, total_buffer+timestamp_len);
+                len3= read(fd, read_buf, offset);
                 if(len3 == -1)
                 {
                         perror("Read unsuccessful\n");
@@ -235,7 +250,7 @@ void thread_to_send(void *threadparam)
                 
                 
         
-        ret5= send(threadlocal->accept_fd, read_buf, len3+timestamp_len, 0);
+        ret5= send(threadlocal->accept_fd, read_buf, len3, 0);
          if(ret5 == -1)
          {
                 perror("Send unsuccessful\n");
@@ -247,7 +262,7 @@ void thread_to_send(void *threadparam)
           
           
         
-       syslog(LOG_USER, " read rec_buf = %s", read_buf);
+       //syslog(LOG_USER, " read rec_buf = %s", read_buf);
         
         pthread_mutex_unlock(&mutex);
         
@@ -278,7 +293,7 @@ void thread_to_send(void *threadparam)
 void thread_for_timer( union sigval sigval)
 {
 	
-	pthread_mutex_lock(&mutex);
+	
 	
 	char timer_buf[timer_bufsize];
 	
@@ -290,10 +305,10 @@ void thread_for_timer( union sigval sigval)
 	
 	time_stamp= localtime(&time_cur);
 	
-	int time_buf_siz= strftime(timer_buf, timer_bufsize, "timestamp:%a, %d %b %Y %T %z\n",time_stamp) ;
+	int time_buf_siz= strftime(timer_buf, timer_bufsize, "timestamp:%Y %b %a %H:%M:%S%n",time_stamp) ;
 	if(time_buf_siz < 0 ) perror(" strftime failed");
 	
-	
+	pthread_mutex_lock(&mutex);
 	timestamp_len = time_buf_siz;
 	
 	if( write(fd, timer_buf, time_buf_siz) == -1)
@@ -314,18 +329,18 @@ void sig_handler(int signum)
         syslog(LOG_USER,"Caught signal exiting...");
         
         
-        close(ret);
+        //close(ret);
         
-        shutdown(ret4, SHUT_RDWR);
+        shutdown(ret, SHUT_RDWR);
          
-         remove("/var/tmp/aesdsocketdata.txt");
+         //remove("/var/tmp/aesdsocketdata.txt");
          
-         func_close();       
+        // func_close();       
      
         
-        closelog();
+        //closelog();
         
-        exit(1);
+       // exit(1);
         
         
 }
@@ -344,9 +359,11 @@ int main(int argc, char *argv[])
         struct addrinfo *res;
         //struct stat st;
         
+        int deamon=0;
+        
         //struct thread_data *threadmain;
         
-        
+        SLIST_INIT(&head); 
               
         
         memset(&hints, 0, sizeof(hints));
@@ -404,16 +421,23 @@ int main(int argc, char *argv[])
          
          freeaddrinfo(res);
          
-         if(argc == 2)
-         if(!strcmp( "-d", argv[1]))
-         {
+          pid_t pid;
          
-                 pid_t pid;
+         if(argc == 2)
+         {
+         if (!strcmp( "-d", argv[1]))
+         {
+         	
+         	deamon=1;
+                
                  pid = fork();
 
                 
                 if (pid < 0)
-                exit(EXIT_FAILURE);
+                {
+                func_close();
+                return -1;
+                }
         
                 
                 if (pid > 0)
@@ -426,7 +450,9 @@ int main(int argc, char *argv[])
                 {
                	 close(ret4);
                 	close(ret);
-        	 	exit(EXIT_FAILURE);
+                	func_close();
+                	return -1;
+        	 	//exit(EXIT_FAILURE);
        	 }
 
                 
@@ -439,7 +465,9 @@ int main(int argc, char *argv[])
                  {
                         perror("chdir unsuccesful");
                         close(ret4);
-                        exit(EXIT_FAILURE);
+                        func_close();
+                        return -1;
+                        //exit(EXIT_FAILURE);
                         }
                         
                  int fd1;
@@ -453,6 +481,59 @@ int main(int argc, char *argv[])
                 close(STDERR_FILENO);
             }
          }
+         
+         }
+         
+         
+       if((deamon==0) || ( pid ==0))      
+          {
+         struct sigevent sev;
+         
+         memset(&sev,0,sizeof(struct sigevent));
+          int clockid = CLOCK_MONOTONIC;
+          
+           sev.sigev_notify = SIGEV_THREAD;
+   	  sev.sigev_notify_function = thread_for_timer;
+   	  
+   	  struct timespec starttime;
+         
+         if(timer_create(clockid,&sev,&timerid) != 0)
+         {
+         	perror("timer create failed");
+         	//func_close();
+         }
+         
+         if(clock_gettime(clockid,&starttime) == -1)
+         {
+         
+         	perror("timer gettime failed");
+         	//func_close();
+         
+         }
+         
+         struct itimerspec itimer;
+    	itimer.it_interval.tv_sec = 10;
+    	itimer.it_interval.tv_nsec = 1000000;
+    	
+    	itimer.it_value.tv_sec = starttime.tv_sec + itimer.it_interval.tv_sec;
+    	itimer.it_value.tv_nsec = starttime.tv_nsec + itimer.it_interval.tv_nsec;
+    	
+    	if( itimer.it_value.tv_nsec > 1000000000L )
+       {
+       	itimer.it_value.tv_nsec -= 1000000000L;
+        	itimer.it_value.tv_sec ++;
+    	}
+    	
+    	if(timer_settime(timerid, TIMER_ABSTIME, &itimer, NULL) != 0)
+    	{
+    		perror("timer settime failed");
+         	//func_close();    		
+    	}
+         
+         
+         
+       }
+     
         
         
         
@@ -479,52 +560,7 @@ int main(int argc, char *argv[])
          
          
          
-         struct sigevent sev;
          
-         memset(&sev,0,sizeof(struct sigevent));
-          int clockid = CLOCK_MONOTONIC;
-          
-           sev.sigev_notify = SIGEV_THREAD;
-   	  sev.sigev_notify_function = thread_for_timer;
-   	  
-   	  struct timespec starttime;
-         
-         if(timer_create(clockid,&sev,&timerid) != 0)
-         {
-         	perror("timer create failed");
-         	func_close();
-         }
-         
-         if(clock_gettime(clockid,&starttime) == -1)
-         {
-         
-         	perror("timer gettime failed");
-         	func_close();
-         
-         }
-         
-         struct itimerspec itimer;
-    	itimer.it_interval.tv_sec = 10;
-    	itimer.it_interval.tv_nsec = 0;
-    	
-    	itimer.it_value.tv_sec = starttime.tv_sec + itimer.it_interval.tv_sec;
-    	itimer.it_value.tv_nsec = starttime.tv_nsec + itimer.it_interval.tv_nsec;
-    	
-    	if( itimer.it_value.tv_nsec > 1000000000L )
-       {
-       	itimer.it_value.tv_nsec -= 1000000000L;
-        	itimer.it_value.tv_sec ++;
-    	}
-    	
-    	if(timer_settime(timerid, TIMER_ABSTIME, &itimer, NULL) != 0)
-    	{
-    		perror("timer settime failed");
-         	func_close();
-    		
-    	}
-         
-         
-         SLIST_INIT(&head); 
          
   while(signal_bool==0)
         {
@@ -547,7 +583,7 @@ int main(int argc, char *argv[])
                 ip = inet_ntoa(addr_in->sin_addr);
                 syslog(LOG_USER, "Accepted connection from %s",ip);
                 
-                
+                	//timestamp_len=0;
                 
                 	datap = (slist_data_t*)malloc(sizeof(slist_data_t));
    			SLIST_INSERT_HEAD(&head,datap,entries);
@@ -582,15 +618,19 @@ int main(int argc, char *argv[])
          
         } 
         
+        printf("above funcclose\n");
         
-        
+         func_close(); 
          
+         timer_delete(timerid);
          
                 
         //closelog();
         
        // } 
  
-   //remove("/var/tmp/aesdsocketdata.txt");
+   remove("/var/tmp/aesdsocketdata.txt");
+   
+   return 0;
 }
 
