@@ -37,6 +37,7 @@ struct aesd_dev
 	struct aesd_circular_buffer buff1;
         struct aesd_buffer_entry buff_entry1;
         struct mutex mutex;
+        
 };
 
 

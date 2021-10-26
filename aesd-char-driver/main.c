@@ -63,10 +63,6 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
 	struct aesd_dev *dev = (struct aesd_dev *)filp->private_data;
 	size_t read_bytes;
 	size_t offset = 0;
-	size_t temp_count = count;
-	size_t cur_pos = 0;
-	//int ret;
-
 	struct aesd_buffer_entry *temp_buffer = NULL;
 
 
@@ -79,53 +75,54 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
 	retval = mutex_lock_interruptible(&dev->mutex);
 	if(retval != 0)
 	{
-		return retval;
+		return -ERESTARTSYS;
 	}
 
-	do
-	{
+	
 
 
 		temp_buffer = aesd_circular_buffer_find_entry_offset_for_fpos(&dev->buff1, *f_pos, &offset);
 		if(temp_buffer == NULL) 
 		{
-			mutex_unlock(&dev->mutex);
+			read_bytes=0;
+			goto end1;
 		}
-		else 
-		{
-			read_bytes= temp_buffer->size - offset;
-			if(read_bytes > count)
-				read_bytes=count;
+		
+		read_bytes= temp_buffer->size - offset;
+		if(read_bytes > count)
+			read_bytes=count;
 
-		}
+		
 
-		retval= copy_to_user( &buf[cur_pos], (temp_buffer->buffptr + offset), read_bytes );
+		retval= copy_to_user( buf, (temp_buffer->buffptr + offset), read_bytes );
 
 		if(retval != 0 )
-			return -EFAULT;
+		{
+			read_bytes= -EFAULT;
+			goto end1;
+		}
 
 	
-		cur_pos += (read_bytes - retval);
-	      temp_count-= (read_bytes - retval);	
+	
+	
 
-	}while(temp_count);
-
-	*f_pos+= cur_pos;
+	*f_pos+= read_bytes;
+end1: 
 	mutex_unlock(&dev->mutex);
 
-	return cur_pos;
+	return read_bytes;
 }
 
 ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
                 loff_t *f_pos)
 {
 	ssize_t retval;
-	size_t cur_pos = 0;
+	char * another_buf = NULL;
 
 	struct aesd_dev *dev = (struct aesd_dev *)filp->private_data;
 
 	unsigned long bytes_remaining;
-	const char *bytes_temp;
+	const char *bytes_temp = NULL;
 
 	 PDEBUG("write %zu bytes with offset %lld",count,*f_pos);
         /**
@@ -135,49 +132,65 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
 	retval = mutex_lock_interruptible(&dev->mutex);
         if(retval != 0)
         {
-                return retval;
+                return -ERESTARTSYS;
         }
 
+	
 	if(dev->buff_entry1.size == 0)
 	{
-		dev->buff_entry1.buffptr = kzalloc( count*sizeof(char), GFP_KERNEL);
-		if(dev->buff_entry1.buffptr == NULL)
+		another_buf = kmalloc( count*sizeof(char), GFP_KERNEL);
+		if(another_buf == NULL)
 		{
-			mutex_unlock(&dev->mutex);
-			return -ENOMEM;
+			
+			retval = -ENOMEM;
+			goto end2;
 		}
+		
+		
+		bytes_remaining =  copy_from_user(another_buf , buf, count);
+		if(bytes_remaining != 0)
+		{
+			
+			retval = 0;
+			goto end2;
+		}
+		
+		dev->buff_entry1.size=count;
+		
 	}else 
 	{
 
-		dev->buff_entry1.buffptr= krealloc(dev->buff_entry1.buffptr, (dev->buff_entry1.size + count), GFP_KERNEL);
-		if(dev->buff_entry1.buffptr == NULL)
-                {
-                        mutex_unlock(&dev->mutex);
-                        return -ENOMEM;
-                }
+		another_buf = kmalloc( dev->buff_entry1.size + count, GFP_KERNEL);
+		if(another_buf == NULL)
+		{
+			
+			retval = -ENOMEM;
+			goto end2;
+		}
+		
+		memcpy(another_buf, dev->buff_entry1.buffptr, dev->buff_entry1.size);
+		
+		kfree(dev->buff_entry1.buffptr);
+		
+		bytes_remaining =  copy_from_user(another_buf  + dev->buff_entry1.size, buf, count);
+		if(bytes_remaining != 0)
+		{
+			
+			retval = 0;
+			goto end2;
+		}
+		
+		dev->buff_entry1.size += count;
 
 	}
+	
+	dev->buff_entry1.buffptr =  another_buf;
 
-	cur_pos= dev->buff_entry1.size;
-	dev->buff_entry1.size += count;
-
-	bytes_remaining =  copy_from_user((void*)( dev->buff_entry1.buffptr + cur_pos) , buf, count);
-
-	if(bytes_remaining != 0)
-	{
-
-		return -EFAULT;
-
-	}
-
-	cur_pos = count - bytes_remaining;
-	dev->buff_entry1.size -= bytes_remaining;
-
-
-	if( strchr(dev->buff_entry1.buffptr, '\n') != NULL)
+	
+	if( strchr(another_buf, '\n') != NULL)
 	{
 		
-		bytes_temp = aesd_circular_buffer_add_entry( &(dev->buff1), &(dev->buff_entry1)); 
+		bytes_temp = aesd_circular_buffer_add_entry( &dev->buff1, &dev->buff_entry1); 
 		if(bytes_temp != 0)
 		{
 
@@ -186,17 +199,20 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
 		}
 
 		dev->buff_entry1.size=0;
-		dev->buff_entry1.buffptr = NULL;
+		//dev->buff_entry1.buffptr = NULL;
 
 	}
 	
-	*f_pos=0;
+	retval=count;
 
+end2:
 	mutex_unlock(&dev->mutex);
 
-
-	return count;
+	return retval;
 }
+
+
+
 struct file_operations aesd_fops = {
 	.owner =    THIS_MODULE,
 	.read =     aesd_read,
