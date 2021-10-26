@@ -17,12 +17,13 @@
 #include <linux/types.h>
 #include <linux/cdev.h>
 #include <linux/fs.h> // file_operations
+#include <linux/uaccess.h>  
+#include <linux/string.h>
+#include <linux/slab.h> 
+
 #include "aesdchar.h"
 int aesd_major =   0; // use dynamic major
 int aesd_minor =   0;
-
-#include <linux/slab.h>
-#include <linux/string.h>
 
 #include "aesd-circular-buffer.h"
 
@@ -61,10 +62,12 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
 	ssize_t retval = 0;
 	struct aesd_dev *dev = (struct aesd_dev *)filp->private_data;
 	size_t read_bytes;
-	size_t offset;
+	size_t offset = 0;
+	size_t temp_count = count;
+	size_t cur_pos = 0;
 	//int ret;
 
-	struct aesd_buffer_entry *temp_buffer;
+	struct aesd_buffer_entry *temp_buffer = NULL;
 
 
 
@@ -79,37 +82,45 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
 		return retval;
 	}
 
+	do
+	{
+
+
+		temp_buffer = aesd_circular_buffer_find_entry_offset_for_fpos(&dev->buff1, *f_pos, &offset);
+		if(temp_buffer == NULL) 
+		{
+			mutex_unlock(&dev->mutex);
+		}
+		else 
+		{
+			read_bytes= temp_buffer->size - offset;
+			if(read_bytes > count)
+				read_bytes=count;
+
+		}
+
+		retval= copy_to_user( &buf[cur_pos], (temp_buffer->buffptr + offset), read_bytes );
+
+		if(retval != 0 )
+			return -EFAULT;
+
 	
+		cur_pos += (read_bytes - retval);
+	      temp_count-= (read_bytes - retval);	
 
-	temp_buffer = aesd_circular_buffer_find_entry_offset_for_fpos(&dev->buff1, *f_pos, &offset);
-	if(temp_buffer == NULL) 
-	{
-		mutex_unlock(&dev->mutex);
-	}
-	else 
-	{
-		read_bytes= temp_buffer->size - offset;
-		if(read_bytes > count)
-			read_bytes=count;
+	}while(temp_count);
 
-	}
-
-	retval= copy_to_user( buf, (temp_buffer->buffptr + offset), read_bytes );
-
-	if(retval != 0 )
-		return -EFAULT;
-
-	*f_pos+= read_bytes;
-
+	*f_pos+= cur_pos;
 	mutex_unlock(&dev->mutex);
 
-	return read_bytes;
+	return cur_pos;
 }
 
 ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
                 loff_t *f_pos)
 {
-	ssize_t retval = -ENOMEM;
+	ssize_t retval;
+	size_t cur_pos = 0;
 
 	struct aesd_dev *dev = (struct aesd_dev *)filp->private_data;
 
@@ -127,14 +138,30 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
                 return retval;
         }
 
-	dev->buff_entry1.buffptr = kmalloc( count*sizeof(char), GFP_KERNEL);
-	if(dev->buff_entry1.buffptr == NULL)
+	if(dev->buff_entry1.size == 0)
 	{
-		mutex_unlock(&dev->mutex);
-		return -ENOMEM;
+		dev->buff_entry1.buffptr = kzalloc( count*sizeof(char), GFP_KERNEL);
+		if(dev->buff_entry1.buffptr == NULL)
+		{
+			mutex_unlock(&dev->mutex);
+			return -ENOMEM;
+		}
+	}else 
+	{
+
+		dev->buff_entry1.buffptr= krealloc(dev->buff_entry1.buffptr, (dev->buff_entry1.size + count), GFP_KERNEL);
+		if(dev->buff_entry1.buffptr == NULL)
+                {
+                        mutex_unlock(&dev->mutex);
+                        return -ENOMEM;
+                }
+
 	}
 
-	bytes_remaining =  copy_from_user((void*) dev->buff_entry1.buffptr, buf, count);
+	cur_pos= dev->buff_entry1.size;
+	dev->buff_entry1.size += count;
+
+	bytes_remaining =  copy_from_user((void*)( dev->buff_entry1.buffptr + cur_pos) , buf, count);
 
 	if(bytes_remaining != 0)
 	{
@@ -143,8 +170,8 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
 
 	}
 
-
-	dev->buff_entry1.size += count;
+	cur_pos = count - bytes_remaining;
+	dev->buff_entry1.size -= bytes_remaining;
 
 
 	if( strchr(dev->buff_entry1.buffptr, '\n') != NULL)
