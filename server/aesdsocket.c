@@ -29,6 +29,13 @@
 
 #include "queue.h"
 
+#define USE_AESD_CHAR_DEVICE 1
+
+#if USE_AESD_CHAR_DEVICE
+#define FILENAME "/dev/aesdchar"
+#else
+#define FILENAME "/var/tmp/aesdsocketdata"
+#endif
 
 int ret4=0, fd=0, ret=0;
 int signal_bool=0;
@@ -101,7 +108,7 @@ void func_close()
   
 	
 	
-	remove("/var/tmp/aesdsocketdata.txt");
+	remove(FILENAME);
 	
 
 }
@@ -142,6 +149,14 @@ void thread_to_send(void *threadparam)
         }
 	
 	int total=0;
+	
+	fd= open(FILENAME, O_CREAT | O_RDWR | O_APPEND , 0666);
+        if(fd == -1)
+       {
+              perror("File create and open unsuccessful\n");
+              func_close();
+        }
+        
         
                 do
                 {
@@ -215,7 +230,7 @@ void thread_to_send(void *threadparam)
                 //lseek(fd, sent, SEEK_SET);
                 
                 //int read_len;
-               // if((total_buffer-sent)<buf_size) read_len=total_buffer-sent;
+                //if((total_buffer-sent)<buf_size) read_len=total_buffer-sent;
                 //else read_len=buf_size;
                 
                 
@@ -225,14 +240,14 @@ void thread_to_send(void *threadparam)
                perror("block failed");
                }
                 
-                int offset= lseek(fd, 0, SEEK_END);
+                //int offset= lseek(fd, 0, SEEK_END);
           
-        	 read_buf= (char *)realloc(read_buf, sizeof(char)*(offset));
+        	 read_buf= (char *)realloc(read_buf, sizeof(char)*(total_buffer));
         	 
-        	 lseek(fd, 0, SEEK_SET);
+        	 //lseek(fd, 0, SEEK_SET);
                
          
-                len3= read(fd, read_buf, offset);
+                len3= read(fd, read_buf, total_buffer);
                 if(len3 == -1)
                 {
                         perror("Read unsuccessful\n");
@@ -262,7 +277,7 @@ void thread_to_send(void *threadparam)
           
           
         
-       //syslog(LOG_USER, " read rec_buf = %s", read_buf);
+       syslog(LOG_USER, " read rec_buf = %s", read_buf);
         
         pthread_mutex_unlock(&mutex);
         
@@ -286,6 +301,7 @@ void thread_to_send(void *threadparam)
           
           free(read_buf);
           free(rec_buf);
+	close(fd);
 
 
 }
@@ -311,11 +327,11 @@ void thread_for_timer( union sigval sigval)
 	pthread_mutex_lock(&mutex);
 	timestamp_len = time_buf_siz;
 	
-	if( write(fd, timer_buf, time_buf_siz) == -1)
-	{
-		perror("timetsamp write error");
-		func_close();
-	}
+	//if( write(fd, timer_buf, time_buf_siz) == -1)
+	//{
+	//	perror("timetsamp write error");
+	//	func_close();
+	//}
 	
 	pthread_mutex_unlock(&mutex);
 
@@ -551,12 +567,12 @@ int main(int argc, char *argv[])
          
    
          
-     fd= open("/var/tmp/aesdsocketdata.txt", O_CREAT | O_RDWR | O_APPEND , 0644);
-         if(fd == -1)
-         {
-                perror("File create and open unsuccessful\n");
-               func_close();
-         }
+     //fd= open(FILENAME, O_CREAT | O_RDWR | O_APPEND , 0644);
+       //  if(fd == -1)
+       //  {
+           //     perror("File create and open unsuccessful\n");
+         //      func_close();
+        // }
          
          
          
@@ -629,7 +645,7 @@ int main(int argc, char *argv[])
         
        // } 
  
-   remove("/var/tmp/aesdsocketdata.txt");
+  // remove(FILENAME);
    
    return 0;
 }
