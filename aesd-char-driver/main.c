@@ -117,7 +117,7 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
                 loff_t *f_pos)
 {
 	ssize_t retval;
-	char * another_buf = NULL;
+	
 
 	struct aesd_dev *dev = (struct aesd_dev *)filp->private_data;
 
@@ -138,8 +138,8 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
 	
 	if(dev->buff_entry1.size == 0)
 	{
-		another_buf = kmalloc( count*sizeof(char), GFP_KERNEL);
-		if(another_buf == NULL)
+		dev->buff_entry1.buffptr = kmalloc( count*sizeof(char), GFP_KERNEL);
+		if(dev->buff_entry1.buffptr== NULL)
 		{
 			
 			retval = -ENOMEM;
@@ -147,47 +147,38 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
 		}
 		
 		
-		bytes_remaining =  copy_from_user(another_buf , buf, count);
-		if(bytes_remaining != 0)
-		{
-			
-			retval = 0;
-			goto end2;
-		}
 		
-		dev->buff_entry1.size=count;
 		
 	}else 
 	{
 
-		another_buf = kmalloc( dev->buff_entry1.size + count, GFP_KERNEL);
-		if(another_buf == NULL)
+		dev->buff_entry1.buffptr= krealloc( dev->buff_entry1.buffptr, dev->buff_entry1.size + count, GFP_KERNEL);
+		if(dev->buff_entry1.buffptr == NULL)
 		{
 			
 			retval = -ENOMEM;
 			goto end2;
 		}
 		
-		memcpy(another_buf, dev->buff_entry1.buffptr, dev->buff_entry1.size);
 		
-		kfree(dev->buff_entry1.buffptr);
-		
-		bytes_remaining =  copy_from_user(another_buf  + dev->buff_entry1.size, buf, count);
-		if(bytes_remaining != 0)
-		{
-			
-			retval = 0;
-			goto end2;
-		}
-		
-		dev->buff_entry1.size += count;
 
 	}
 	
-	dev->buff_entry1.buffptr =  another_buf;
-
 	
-	if( strchr(another_buf, '\n') != NULL)
+	
+	
+		bytes_remaining =  copy_from_user((void *)&dev->buff_entry1.buffptr[dev->buff_entry1.size], buf, count);
+		//if(bytes_remaining != 0)
+		//{
+			
+			//retval = 0;
+			//goto end2;
+		//}
+		
+	retval= count - bytes_remaining;
+	dev->buff_entry1.size += retval;
+	
+	if( memchr(dev->buff_entry1.buffptr, '\n', dev->buff_entry1.size) != NULL)
 	{
 		
 		bytes_temp = aesd_circular_buffer_add_entry( &dev->buff1, &dev->buff_entry1); 
@@ -199,11 +190,12 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
 		}
 
 		dev->buff_entry1.size=0;
-		//dev->buff_entry1.buffptr = NULL;
+		dev->buff_entry1.buffptr = NULL;
 
 	}
 	
-	retval=count;
+	
+	*f_pos=0;
 
 end2:
 	mutex_unlock(&dev->mutex);
