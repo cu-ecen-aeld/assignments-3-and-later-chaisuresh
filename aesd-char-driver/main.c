@@ -178,11 +178,11 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
 	retval= count - bytes_remaining;
 	dev->buff_entry1.size += retval;
 	
-	if( memchr(dev->buff_entry1.buffptr, '\n', dev->buff_entry1.size) != NULL)
+	if( (char *)memchr(dev->buff_entry1.buffptr, '\n', dev->buff_entry1.size) != NULL)
 	{
 		
 		bytes_temp = aesd_circular_buffer_add_entry( &dev->buff1, &dev->buff_entry1); 
-		if(bytes_temp != 0)
+		if(bytes_temp != NULL)
 		{
 
 			kfree(bytes_temp);
