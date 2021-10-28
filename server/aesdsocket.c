@@ -40,7 +40,7 @@
 int ret4=0, fd=0, ret=0;
 int signal_bool=0;
 char *ip;
-int buf_size=500, timer_bufsize = 100;
+int buf_size=1000, timer_bufsize = 100;
 int total_buffer=0;
 int timestamp_len=0;
 
@@ -96,7 +96,7 @@ void func_close()
   		
 	
 
-	remove(FILENAME);
+	//remove(FILENAME);
 	
 
 }
@@ -154,7 +154,7 @@ void thread_to_send(void *threadparam)
 	
 	int total=0;
 	
-	fd= open(FILENAME, O_CREAT | O_RDWR | O_APPEND , 0666);
+	fd= open(FILENAME, O_CREAT | O_RDWR , 0666);
         if(fd == -1)
        {
               perror("File create and open unsuccessful\n");
@@ -211,7 +211,7 @@ void thread_to_send(void *threadparam)
                perror("block failed");
                }
                
-                syslog(LOG_USER, " write rec_buf = %s", rec_buf);
+                //syslog(LOG_USER, " write rec_buf = %s", rec_buf);
         
                nr=write(fd, rec_buf, total);
                         if(nr == -1) 
@@ -253,7 +253,7 @@ void thread_to_send(void *threadparam)
                 
               
           
-        	 read_buf= (char *)realloc(read_buf, sizeof(char)*(total_buffer));
+        	 /*read_buf= (char *)realloc(read_buf, (total_buffer+1));
         	 if(read_buf == NULL)
                		{
                		
@@ -263,11 +263,11 @@ void thread_to_send(void *threadparam)
                	 			func_close(); 
                 				
                		
-               		}
+               		}*/
         	 
         	char one_byte;
         	
-               while((len3 = read(fd, &one_byte, 1))>0)
+               while((len3 = read(fd, &one_byte, sizeof(char)))>0)
                {
                
                	read_buf[i]= one_byte;
@@ -276,6 +276,8 @@ void thread_to_send(void *threadparam)
                	{
                	
                		int packets= i- j + 1;
+               		
+               		syslog(LOG_USER, " here i= %d, j= %d", i, j);
                		
                		ret5= send(threadlocal->accept_fd, read_buf+j, packets, 0);
                		if(ret5 == -1)
@@ -300,6 +302,8 @@ void thread_to_send(void *threadparam)
                	
                		sent_bytes+= buf_size;
                		
+               		syslog(LOG_USER, "current realloc size = %d, current i %d", sent_bytes, i);
+               		
                		read_buf= realloc(read_buf, sizeof(char) * sent_bytes);
                		if(read_buf == NULL)
                		{
@@ -321,7 +325,7 @@ void thread_to_send(void *threadparam)
                
                }
                
-               syslog(LOG_USER, " read rec_buf = %s", read_buf);
+               //syslog(LOG_USER, " read rec_buf = %s", read_buf);
                
       
           
