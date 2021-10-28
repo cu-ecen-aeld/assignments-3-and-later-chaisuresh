@@ -92,8 +92,10 @@ const char *aesd_circular_buffer_add_entry(struct aesd_circular_buffer *buffer, 
    
  
     if(buffer->in_offs == buffer->out_offs)
+    {
     if(buffer->len > 0 )
     buffer->full= 1;
+    }else buffer->full=0;
    	
    	
     
@@ -101,13 +103,22 @@ const char *aesd_circular_buffer_add_entry(struct aesd_circular_buffer *buffer, 
     {
     
     	modif = buffer->entry[buffer->out_offs].buffptr;
-    	buffer->out_offs=  (buffer->out_offs+ 1) % AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED;
+    	
 	
 
     }
   
     buffer->entry[buffer->in_offs]= *add_entry;
     buffer->in_offs=(buffer->in_offs+ 1)% AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED;
+    
+     
+    if(buffer->full == 1)
+    {
+    
+    	    	buffer->out_offs=  (buffer->out_offs+ 1) % AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED;
+	
+
+    }
     
      buffer->len++;
 
