@@ -37,7 +37,7 @@
 #define FILENAME "/var/tmp/aesdsocketdata"
 #endif
 
-int ret4=0, fd=0, ret=0;
+int ret4=0,  ret=0;
 int signal_bool=0;
 char *ip;
 int buf_size=1000, timer_bufsize = 100;
@@ -73,8 +73,7 @@ void func_close()
 
 		close(ret4);
                 close(ret); 
-                close(fd);
-                
+
                 pthread_mutex_destroy(&mutex);
                 
              
@@ -110,6 +109,8 @@ void thread_to_send(void *threadparam)
        // signal(SIGTERM, sig_handler);
         
         threadlocal->thread_complete_success=0;
+        
+        int fd;
         
         
         
@@ -147,7 +148,7 @@ void thread_to_send(void *threadparam)
               func_close();
                 free(read_buf);
       		free(rec_buf);
-
+		
                                 
         
         }
@@ -158,6 +159,7 @@ void thread_to_send(void *threadparam)
         if(fd == -1)
        {
               perror("File create and open unsuccessful\n");
+              close(fd);
               func_close();
         }
         
@@ -173,7 +175,7 @@ void thread_to_send(void *threadparam)
                         free(read_buf);
       			free(rec_buf);
                         func_close();
-                         
+                         close(fd);
 
                         
                 } 
@@ -191,7 +193,7 @@ void thread_to_send(void *threadparam)
               					free(read_buf);
       						free(rec_buf);
                	 			func_close(); 
-                				
+                				close(fd);
                		
                		}
                 
@@ -223,7 +225,7 @@ void thread_to_send(void *threadparam)
                                 perror("File write unsuccessful\n");
                                 free(read_buf);
       				 free(rec_buf);
-
+				close(fd);
                                 func_close();
                                 
                         }   
@@ -295,7 +297,7 @@ void thread_to_send(void *threadparam)
               					free(read_buf);
       						free(rec_buf);
                	 			func_close(); 
-                				
+                				close(fd);
          
         				  }
         				  
@@ -321,6 +323,7 @@ void thread_to_send(void *threadparam)
               					free(read_buf);
       						free(rec_buf);
                	 			func_close(); 
+               	 			close(fd);
                 				
                		
                		}
@@ -353,6 +356,7 @@ void thread_to_send(void *threadparam)
                 perror("close socket unsuccessful\n");
                 free(read_buf);
           	free(rec_buf);
+          	close(fd);
 
                 
                                  
@@ -363,7 +367,7 @@ void thread_to_send(void *threadparam)
           
           free(read_buf);
           free(rec_buf);
-	close(fd);
+		close(fd);
 
 
 }
