@@ -40,7 +40,7 @@
 int ret4=0, fd=0, ret=0;
 int signal_bool=0;
 char *ip;
-int buf_size=1000, timer_bufsize = 100;
+int buf_size=230000, timer_bufsize = 100;
 int total_buffer=0;
 int timestamp_len=0;
 
