@@ -368,6 +368,7 @@ void thread_to_send(void *threadparam)
           free(read_buf);
           free(rec_buf);
 		close(fd);
+		close(ret4);
 
 
 }
@@ -695,11 +696,7 @@ int main(int argc, char *argv[])
          timer_delete(timerid);
          
                 
-        //closelog();
-        
-       // } 
- 
-  // remove(FILENAME);
+
    
    return 0;
 }
