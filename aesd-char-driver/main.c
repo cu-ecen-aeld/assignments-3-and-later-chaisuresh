@@ -102,7 +102,7 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
 			goto end1;
 		}
 
-	
+	PDEBUG("retval from read = %ld", read_bytes);
 	
 	
 
@@ -196,6 +196,8 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
 	
 	
 	*f_pos=0;
+	PDEBUG("retval from write = %ld", retval);
+	
 
 end2:
 	mutex_unlock(&dev->mutex);

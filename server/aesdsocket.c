@@ -119,7 +119,27 @@ void thread_to_send(void *threadparam)
     	
     
         char *rec_buf = (char *)malloc(sizeof(char) * buf_size);
+        if(rec_buf == NULL)
+               		{
+               		
+               			perror("Malloc unsuccessful\n");
+              					
+      						free(rec_buf);
+               	 			func_close(); 
+                				
+               		
+               		}
         char *read_buf = (char *)malloc(sizeof(char) * buf_size);
+        if(read_buf == NULL)
+               		{
+               		
+               			perror("Malloc unsuccessful\n");
+              					free(read_buf);
+      						free(rec_buf);
+               	 			func_close(); 
+                				
+               		
+               		}
         
         if((rec_buf==NULL)| (read_buf==NULL))   
         {
@@ -150,9 +170,10 @@ void thread_to_send(void *threadparam)
                  if(len == -1)
                 {
                         perror("receive failed");
-                        func_close();
-                         free(read_buf);
+                        free(read_buf);
       			free(rec_buf);
+                        func_close();
+                         
 
                         
                 } 
@@ -161,6 +182,16 @@ void thread_to_send(void *threadparam)
                 temp_size+= (buf_size);
                 
               rec_buf=realloc(rec_buf, sizeof(char)*(temp_size )); 
+              if(rec_buf == NULL)
+               		{
+               		
+               			perror("Malloc unsuccessful\n");
+              					free(read_buf);
+      						free(rec_buf);
+               	 			func_close(); 
+                				
+               		
+               		}
                 
                               
                //syslog(LOG_USER, " received rec_buf = %s", rec_buf);
@@ -171,7 +202,7 @@ void thread_to_send(void *threadparam)
                 
                 total_buffer+=total;
                 
-                //rec_buf[total]='\0';
+                rec_buf[total]='\0';
                 
                 
                 pthread_mutex_lock(&mutex);
@@ -186,10 +217,11 @@ void thread_to_send(void *threadparam)
                         if(nr == -1) 
                         {
                                 perror("File write unsuccessful\n");
-                                func_close();
                                 free(read_buf);
       				 free(rec_buf);
 
+                                func_close();
+                                
                         }   
                 
                 
@@ -222,6 +254,16 @@ void thread_to_send(void *threadparam)
               
           
         	 read_buf= (char *)realloc(read_buf, sizeof(char)*(total_buffer));
+        	 if(read_buf == NULL)
+               		{
+               		
+               			perror("Malloc unsuccessful\n");
+              					free(read_buf);
+      						free(rec_buf);
+               	 			func_close(); 
+                				
+               		
+               		}
         	 
         	char one_byte;
         	
@@ -239,9 +281,10 @@ void thread_to_send(void *threadparam)
                		if(ret5 == -1)
          				{
               					perror("Send unsuccessful\n");
+              					free(read_buf);
+      						free(rec_buf);
                	 			func_close(); 
-                				free(read_buf);
-          					free(rec_buf);
+                				
          
         				  }
         				  
@@ -258,7 +301,16 @@ void thread_to_send(void *threadparam)
                		sent_bytes+= buf_size;
                		
                		read_buf= realloc(read_buf, sizeof(char) * sent_bytes);
-               	
+               		if(read_buf == NULL)
+               		{
+               		
+               			perror("Malloc unsuccessful\n");
+              					free(read_buf);
+      						free(rec_buf);
+               	 			func_close(); 
+                				
+               		
+               		}
                	
                	
                	}
