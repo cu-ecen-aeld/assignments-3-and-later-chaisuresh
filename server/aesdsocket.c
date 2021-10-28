@@ -40,7 +40,7 @@
 int ret4=0, fd=0, ret=0;
 int signal_bool=0;
 char *ip;
-int buf_size=230000, timer_bufsize = 100;
+int buf_size=1000, timer_bufsize = 100;
 int total_buffer=0;
 int timestamp_len=0;
 
@@ -166,7 +166,7 @@ void thread_to_send(void *threadparam)
                 do
                 {
                 
-                 len= recv(threadlocal->accept_fd, rec_buf, buf_size, 0);
+                 len= recv(threadlocal->accept_fd, rec_buf+total, buf_size, 0);
                  if(len == -1)
                 {
                         perror("receive failed");
@@ -181,7 +181,9 @@ void thread_to_send(void *threadparam)
                 total+=(len);
                 temp_size+= (buf_size);
                 
-              rec_buf=realloc(rec_buf, sizeof(char)*(temp_size )); 
+                syslog(LOG_USER ," rec len = %d", len);
+                
+              rec_buf=realloc(rec_buf, sizeof(char)*(temp_size)); 
               if(rec_buf == NULL)
                		{
                		
@@ -202,7 +204,7 @@ void thread_to_send(void *threadparam)
                 
                 total_buffer+=total;
                 
-                rec_buf[total]='\0';
+                //rec_buf[total]='\0';
                 
                 
                 pthread_mutex_lock(&mutex);
@@ -212,6 +214,8 @@ void thread_to_send(void *threadparam)
                }
                
                 //syslog(LOG_USER, " write rec_buf = %s", rec_buf);
+                
+                
         
                nr=write(fd, rec_buf, total);
                         if(nr == -1) 
@@ -224,6 +228,7 @@ void thread_to_send(void *threadparam)
                                 
                         }   
                 
+                syslog(LOG_USER ," write nr = %d", nr);
                 
                  if (sigprocmask(SIG_UNBLOCK,&threadlocal->mask,NULL) == -1) {   
                perror("unblock failed");
@@ -267,10 +272,14 @@ void thread_to_send(void *threadparam)
         	 
         	char one_byte;
         	
+        	 lseek(fd,0,SEEK_SET);
+        	
+        	
                while((len3 = read(fd, &one_byte, sizeof(char)))>0)
                {
                
                	read_buf[i]= one_byte;
+               	
                	
                	if(read_buf[i] == '\n')
                	{
