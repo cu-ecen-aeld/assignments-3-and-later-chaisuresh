@@ -495,13 +495,7 @@ int main(int argc, char *argv[])
   
          
   
-         
-     fd= open(FILENAME, O_CREAT | O_RDWR | O_APPEND , S_IRWXU);
-        if(fd == -1)
-       {
-              perror("File create and open unsuccessful\n");
-              func_close();
-       }
+   
          
          
          if(argc == 2)
