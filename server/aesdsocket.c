@@ -71,7 +71,7 @@ void func_close()
 {
 
 
-		close(ret4);
+		
                 close(ret); 
 
                 pthread_mutex_destroy(&mutex);
@@ -372,7 +372,7 @@ void thread_to_send(void *threadparam)
           free(read_buf);
           free(rec_buf);
 		close(fd);
-		close(ret4);
+		close(threadlocal->accept_fd);
 
 
 }
@@ -652,6 +652,7 @@ int main(int argc, char *argv[])
          if(ret4 == -1)
          {
                 perror("socket accept failed");
+                //close(ret4);
                 func_close();
                 
                 
@@ -675,6 +676,7 @@ int main(int argc, char *argv[])
                 	{
                 		perror("pthread failed");
                 		func_close();
+                		
                 	}
                 	
                 	SLIST_FOREACH(datap,&head,entries)
@@ -701,7 +703,7 @@ int main(int argc, char *argv[])
         
          func_close(); 
          
-       
+       	
          
                 
 
