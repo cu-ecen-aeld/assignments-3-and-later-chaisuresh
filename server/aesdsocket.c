@@ -92,9 +92,11 @@ void func_close()
     			SLIST_REMOVE_HEAD(&head,entries);
     			free(datap);
   		}
-  		
-	
-
+ 
+#ifdef  USE_AESD_CHAR_DEVICE
+#else 
+	timer_delete(timerid);
+#endif
 	//remove(FILENAME);
 	
 
@@ -196,6 +198,8 @@ void thread_to_send(void *threadparam)
                 				close(fd);
                		
                		}
+               		
+               		memset(rec_buf+total, 0, (temp_size-total));
                 
                               
                //syslog(LOG_USER, " received rec_buf = %s", rec_buf);
@@ -373,6 +377,9 @@ void thread_to_send(void *threadparam)
 
 }
 
+
+#ifdef  USE_AESD_CHAR_DEVICE
+#else 
 void thread_for_timer( union sigval sigval)
 {
 	
@@ -403,7 +410,7 @@ void thread_for_timer( union sigval sigval)
 	pthread_mutex_unlock(&mutex);
 
 }
-
+#endif
 
 void sig_handler(int signum)
 {
@@ -434,7 +441,7 @@ int main(int argc, char *argv[])
         struct addrinfo *res;
         //struct stat st;
         
-        int deamon=0;
+        //int deamon=0;
         
         //struct thread_data *threadmain;
         
@@ -521,7 +528,7 @@ int main(int argc, char *argv[])
          if (!strcmp( "-d", argv[1]))
          {
          	
-         	deamon=1;
+         	//deamon=1;
                 
                  pid = fork();
 
@@ -577,7 +584,8 @@ int main(int argc, char *argv[])
          
          }
          
-         
+#ifdef  USE_AESD_CHAR_DEVICE
+#else      
        if((deamon==0) || ( pid ==0))      
           {
          struct sigevent sev;
@@ -629,7 +637,7 @@ int main(int argc, char *argv[])
      
         
       
-         
+ #endif       
          
          
          
@@ -693,7 +701,7 @@ int main(int argc, char *argv[])
         
          func_close(); 
          
-         timer_delete(timerid);
+       
          
                 
 
