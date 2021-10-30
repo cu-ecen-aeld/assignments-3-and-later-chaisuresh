@@ -29,11 +29,18 @@
 
 #include "queue.h"
 
+#define USE_AESD_CHAR_DEVICE 1
 
-int ret4=0, fd=0, ret=0;
+#ifdef USE_AESD_CHAR_DEVICE
+#define FILENAME "/dev/aesdchar"
+#else
+#define FILENAME "/var/tmp/aesdsocketdata"
+#endif
+
+int ret4=0,  ret=0;
 int signal_bool=0;
 char *ip;
-int buf_size=500, timer_bufsize = 100;
+int buf_size=1000, timer_bufsize = 100;
 int total_buffer=0;
 int timestamp_len=0;
 
@@ -66,8 +73,7 @@ void func_close()
 
 		close(ret4);
                 close(ret); 
-                close(fd);
-                
+
                 pthread_mutex_destroy(&mutex);
                 
              
@@ -87,21 +93,9 @@ void func_close()
     			free(datap);
   		}
   		
-		#if 0
- 		 SLIST_FOREACH(datap,&head,entries)
-  		{
-   		 if (datap->threadmain.thread_complete_success != true)
-   		 {
-      				pthread_cancel(datap->threadmain.thread);
-   		 }
- 		 }
-		#endif
+	
 
-		
-  
-	
-	
-	remove("/var/tmp/aesdsocketdata.txt");
+	//remove(FILENAME);
 	
 
 }
@@ -116,19 +110,37 @@ void thread_to_send(void *threadparam)
         
         threadlocal->thread_complete_success=0;
         
+        int fd;
+        
+        
+        
          int temp_size=buf_size, len3,ret5, len, nr;
     		
-    	//sigset_t mask;
-    	
-    	//if(sigemptyset(&mask) == -1)
-    	//perror("creating empty signal set failed");
-    	
-    	//if((sigaddset(&mask, SIGINT) == -1) |  (sigaddset(&mask, SIGTERM) == -1))
-    	//perror("addint signals to set failed");
+  
     	
     
         char *rec_buf = (char *)malloc(sizeof(char) * buf_size);
+        if(rec_buf == NULL)
+               		{
+               		
+               			perror("Malloc unsuccessful\n");
+              					
+      						free(rec_buf);
+               	 			func_close(); 
+                				
+               		
+               		}
         char *read_buf = (char *)malloc(sizeof(char) * buf_size);
+        if(read_buf == NULL)
+               		{
+               		
+               			perror("Malloc unsuccessful\n");
+              					free(read_buf);
+      						free(rec_buf);
+               	 			func_close(); 
+                				
+               		
+               		}
         
         if((rec_buf==NULL)| (read_buf==NULL))   
         {
@@ -136,23 +148,34 @@ void thread_to_send(void *threadparam)
               func_close();
                 free(read_buf);
       		free(rec_buf);
-
+		
                                 
         
         }
 	
 	int total=0;
+	
+	fd= open(FILENAME, O_CREAT | O_RDWR , 0666);
+        if(fd == -1)
+       {
+              perror("File create and open unsuccessful\n");
+              close(fd);
+              func_close();
+        }
+        
+        
         
                 do
                 {
                 
-                 len= recv(threadlocal->accept_fd, rec_buf, buf_size, 0);
+                 len= recv(threadlocal->accept_fd, rec_buf+total, buf_size, 0);
                  if(len == -1)
                 {
                         perror("receive failed");
-                        func_close();
-                         free(read_buf);
+                        free(read_buf);
       			free(rec_buf);
+                        func_close();
+                         close(fd);
 
                         
                 } 
@@ -160,10 +183,22 @@ void thread_to_send(void *threadparam)
                 total+=(len);
                 temp_size+= (buf_size);
                 
-              rec_buf=realloc(rec_buf, sizeof(char)*(temp_size + 1)); 
+                syslog(LOG_USER ," rec len = %d", len);
+                
+              rec_buf=realloc(rec_buf, sizeof(char)*(temp_size)); 
+              if(rec_buf == NULL)
+               		{
+               		
+               			perror("Malloc unsuccessful\n");
+              					free(read_buf);
+      						free(rec_buf);
+               	 			func_close(); 
+                				close(fd);
+               		
+               		}
                 
                               
-               
+               //syslog(LOG_USER, " received rec_buf = %s", rec_buf);
                 
                 
                 
@@ -180,17 +215,22 @@ void thread_to_send(void *threadparam)
                perror("block failed");
                }
                
+                //syslog(LOG_USER, " write rec_buf = %s", rec_buf);
                 
+                
+        
                nr=write(fd, rec_buf, total);
                         if(nr == -1) 
                         {
                                 perror("File write unsuccessful\n");
-                                func_close();
                                 free(read_buf);
       				 free(rec_buf);
-
+				close(fd);
+                                func_close();
+                                
                         }   
                 
+                syslog(LOG_USER ," write nr = %d", nr);
                 
                  if (sigprocmask(SIG_UNBLOCK,&threadlocal->mask,NULL) == -1) {   
                perror("unblock failed");
@@ -198,7 +238,7 @@ void thread_to_send(void *threadparam)
                 
                 
                 
-                syslog(LOG_USER, " received rec_buf = %s", rec_buf);
+                
         
                 
 		pthread_mutex_unlock(&mutex);
@@ -206,18 +246,11 @@ void thread_to_send(void *threadparam)
          
           
         
-        // lseek(fd, 0, SEEK_SET);
+ 
          
-         int sent=0;
-         //while(sent< total_buffer)
-        // {
          
-                //lseek(fd, sent, SEEK_SET);
-                
-                //int read_len;
-               // if((total_buffer-sent)<buf_size) read_len=total_buffer-sent;
-                //else read_len=buf_size;
-                
+ 	int i=0, j=0;
+ 	int sent_bytes= buf_size;
                 
                 pthread_mutex_lock(&mutex);
                 
@@ -225,45 +258,92 @@ void thread_to_send(void *threadparam)
                perror("block failed");
                }
                 
-                int offset= lseek(fd, 0, SEEK_END);
+              
           
-        	 read_buf= (char *)realloc(read_buf, sizeof(char)*(offset));
+        	 /*read_buf= (char *)realloc(read_buf, (total_buffer+1));
+        	 if(read_buf == NULL)
+               		{
+               		
+               			perror("Malloc unsuccessful\n");
+              					free(read_buf);
+      						free(rec_buf);
+               	 			func_close(); 
+                				
+               		
+               		}*/
         	 
-        	 lseek(fd, 0, SEEK_SET);
+        	char one_byte;
+        	
+        	 lseek(fd,0,SEEK_SET);
+        	
+        	
+               while((len3 = read(fd, &one_byte, sizeof(char)))>0)
+               {
                
+               	read_buf[i]= one_byte;
+               	
+               	
+               	if(read_buf[i] == '\n')
+               	{
+               	
+               		int packets= i- j + 1;
+               		
+               		syslog(LOG_USER, " here i= %d, j= %d", i, j);
+               		
+               		ret5= send(threadlocal->accept_fd, read_buf+j, packets, 0);
+               		if(ret5 == -1)
+         				{
+              					perror("Send unsuccessful\n");
+              					free(read_buf);
+      						free(rec_buf);
+               	 			func_close(); 
+                				close(fd);
          
-                len3= read(fd, read_buf, offset);
-                if(len3 == -1)
-                {
-                        perror("Read unsuccessful\n");
-                       func_close();   
-                       free(read_buf);
-         		free(rec_buf);
-        
-                }
-                
-                
-                
-                sent+=len3;   
-                
-                //stat("/var/tmp/aesdsocketdata.txt", &st);
-                
-                
-        
-        ret5= send(threadlocal->accept_fd, read_buf, len3, 0);
-         if(ret5 == -1)
-         {
-                perror("Send unsuccessful\n");
-                func_close(); 
-                free(read_buf);
-          	free(rec_buf);
-         
-          }
+        				  }
+        				  
+        			j=i+1;
+               	
+               	
+               	}
+               
+               	i++;
+               	
+               	if(i >=sent_bytes)
+               	{
+               	
+               		sent_bytes+= buf_size;
+               		
+               		syslog(LOG_USER, "current realloc size = %d, current i %d", sent_bytes, i);
+               		
+               		read_buf= realloc(read_buf, sizeof(char) * sent_bytes);
+               		if(read_buf == NULL)
+               		{
+               		
+               			perror("Malloc unsuccessful\n");
+              					free(read_buf);
+      						free(rec_buf);
+               	 			func_close(); 
+               	 			close(fd);
+                				
+               		
+               		}
+               	
+               	
+               	}
+               	
+               
+               
+               
+               
+               }
+               
+               //syslog(LOG_USER, " read rec_buf = %s", read_buf);
+               
+      
           
           
         
-       //syslog(LOG_USER, " read rec_buf = %s", read_buf);
-        
+       
         pthread_mutex_unlock(&mutex);
         
          if (sigprocmask(SIG_UNBLOCK,&threadlocal->mask,NULL) == -1) {   
@@ -276,6 +356,7 @@ void thread_to_send(void *threadparam)
                 perror("close socket unsuccessful\n");
                 free(read_buf);
           	free(rec_buf);
+          	close(fd);
 
                 
                                  
@@ -286,6 +367,8 @@ void thread_to_send(void *threadparam)
           
           free(read_buf);
           free(rec_buf);
+		close(fd);
+		close(ret4);
 
 
 }
@@ -311,11 +394,11 @@ void thread_for_timer( union sigval sigval)
 	pthread_mutex_lock(&mutex);
 	timestamp_len = time_buf_siz;
 	
-	if( write(fd, timer_buf, time_buf_siz) == -1)
-	{
-		perror("timetsamp write error");
-		func_close();
-	}
+	//if( write(fd, timer_buf, time_buf_siz) == -1)
+	//{
+	//	perror("timetsamp write error");
+	//	func_close();
+	//}
 	
 	pthread_mutex_unlock(&mutex);
 
@@ -329,19 +412,11 @@ void sig_handler(int signum)
         syslog(LOG_USER,"Caught signal exiting...");
         
         
-        //close(ret);
+     
         
         shutdown(ret, SHUT_RDWR);
          
-         //remove("/var/tmp/aesdsocketdata.txt");
-         
-        // func_close();       
-     
-        
-        //closelog();
-        
-       // exit(1);
-        
+
         
 }
 
@@ -422,6 +497,24 @@ int main(int argc, char *argv[])
          freeaddrinfo(res);
          
           pid_t pid;
+          
+            
+        
+         ret3= listen(ret, 10);
+          if(ret3 == -1)
+         {
+                perror("socket listen failed");
+               func_close();
+                //exit(1);
+         }
+        
+        
+        size1= sizeof(sockaddr1);
+  
+         
+  
+   
+         
          
          if(argc == 2)
          {
@@ -535,29 +628,7 @@ int main(int argc, char *argv[])
        }
      
         
-        
-        
-         ret3= listen(ret, 10);
-          if(ret3 == -1)
-         {
-                perror("socket listen failed");
-               func_close();
-                //exit(1);
-         }
-        
-        
-        size1= sizeof(sockaddr1);
-  
-         
-   
-         
-     fd= open("/var/tmp/aesdsocketdata.txt", O_CREAT | O_RDWR | O_APPEND , 0644);
-         if(fd == -1)
-         {
-                perror("File create and open unsuccessful\n");
-               func_close();
-         }
-         
+      
          
          
          
@@ -618,18 +689,14 @@ int main(int argc, char *argv[])
          
         } 
         
-        printf("above funcclose\n");
+       
         
          func_close(); 
          
          timer_delete(timerid);
          
                 
-        //closelog();
-        
-       // } 
- 
-   remove("/var/tmp/aesdsocketdata.txt");
+
    
    return 0;
 }
